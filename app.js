@@ -78,6 +78,11 @@ const CUISINE_EMOJI = {
 function openLoginModal() {
   document.getElementById('login-modal').classList.add('open');
   document.body.style.overflow = 'hidden';
+  // Reset form state
+  document.getElementById('login-username').value = '';
+  document.getElementById('login-password').value = '';
+  const err = document.getElementById('login-error');
+  if (err) err.style.display = 'none';
 }
 
 function closeLoginModal() {
@@ -85,32 +90,65 @@ function closeLoginModal() {
   document.body.style.overflow = '';
 }
 
+function switchLoginTab(role) {
+  document.getElementById('login-role').value = role;
+  // Toggle tabs
+  document.querySelectorAll('.login-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(`tab-${role}`).classList.add('active');
+  // Toggle hint cards
+  document.getElementById('hint-admin').style.display = role === 'admin' ? 'block' : 'none';
+  document.getElementById('hint-owner').style.display = role === 'owner' ? 'block' : 'none';
+  // Clear errors
+  const err = document.getElementById('login-error');
+  if (err) err.style.display = 'none';
+}
+
+function toggleLoginPassword() {
+  const input = document.getElementById('login-password');
+  const btn = document.getElementById('pw-toggle');
+  if (input.type === 'password') { input.type = 'text'; btn.textContent = '🙈'; }
+  else { input.type = 'password'; btn.textContent = '👁'; }
+}
+
 async function handleOwnerLoginSubmit() {
-  const user = document.getElementById('login-username').value;
+  const user = document.getElementById('login-username').value.trim();
   const pass = document.getElementById('login-password').value;
+  const role = document.getElementById('login-role').value;
+  const errEl = document.getElementById('login-error');
+  const btn = document.getElementById('login-submit-btn');
+
+  if (errEl) errEl.style.display = 'none';
+  btn.disabled = true;
+  btn.textContent = 'Signing in…';
+
   try {
-    showToast('Signing in...', '🔒');
-    const res = await API.ownerLogin(user, pass);
-    
-    // Check if there was a pending claim
+    const res = await API.ownerLogin(user, pass, role);
+
+    // Handle pending claim
     const pendingClaimId = localStorage.getItem('pending_claim_id');
     if (pendingClaimId) {
       await API.claimRestaurant(parseInt(pendingClaimId));
       localStorage.removeItem('pending_claim_id');
       showToast('Listing claimed successfully!', '🏪');
     } else {
-      showToast('Logged in successfully!', '✅');
+      showToast(`Welcome back, ${res.displayName}!`, '✅');
     }
-    
+
     closeLoginModal();
     navigateTo('dashboard');
   } catch (e) {
-    showToast(e.message, '❌');
+    if (errEl) { errEl.textContent = e.message; errEl.style.display = 'block'; }
+    else showToast(e.message, '❌');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Sign In';
   }
 }
 
 function ownerLogout() {
   localStorage.removeItem(CONFIG.AUTH_TOKEN_KEY);
+  localStorage.removeItem('tm_user_role');
+  localStorage.removeItem('tm_user_name');
   showToast('Logged out successfully', '🚪');
   navigateTo('home');
 }

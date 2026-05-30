@@ -665,19 +665,46 @@
     <div class="login-box">
       <button class="modal-close" onclick="closeLoginModal()">✕</button>
       <div class="login-header">
-        <div class="login-title">Owner Access</div>
-        <div class="login-subtitle">Sign in to manage your restaurant page</div>
+        <div class="login-title">🔐 Secure Access</div>
+        <div class="login-subtitle">Sign in to manage the Tomas Morato platform</div>
       </div>
+
+      <!-- Role Tabs -->
+      <div class="login-tabs" id="login-tabs">
+        <button class="login-tab active" id="tab-admin" onclick="switchLoginTab('admin')">🛡️ Admin</button>
+        <button class="login-tab" id="tab-owner" onclick="switchLoginTab('owner')">🏪 Owner</button>
+      </div>
+
+      <!-- Credential Hint Cards -->
+      <div class="login-hint-cards">
+        <div class="login-hint-card" id="hint-admin">
+          <div class="hint-role">Admin Credentials</div>
+          <div class="hint-cred"><span>Username:</span> <code>admin</code></div>
+          <div class="hint-cred"><span>Password:</span> <code>admin123</code></div>
+          <div class="hint-note">Full platform access — all restaurants</div>
+        </div>
+        <div class="login-hint-card" id="hint-owner" style="display:none;">
+          <div class="hint-role">Owner Credentials</div>
+          <div class="hint-cred"><span>Username:</span> <code>owner@romulo.com</code></div>
+          <div class="hint-cred"><span>Password:</span> <code>owner123</code></div>
+          <div class="hint-note">Manages Romulo Cafe listing only</div>
+        </div>
+      </div>
+
       <form class="login-form" onsubmit="event.preventDefault(); handleOwnerLoginSubmit();">
+        <input type="hidden" id="login-role" value="admin" />
         <div class="form-group">
           <label class="form-label" for="login-username">Email / Username</label>
-          <input type="text" class="form-input" id="login-username" placeholder="owner@romulocafe.com" required />
+          <input type="text" class="form-input" id="login-username" placeholder="Enter username…" required autocomplete="username" />
         </div>
-        <div class="form-group">
+        <div class="form-group" style="position:relative;">
           <label class="form-label" for="login-password">Password</label>
-          <input type="password" class="form-input" id="login-password" placeholder="••••••••" required />
+          <input type="password" class="form-input" id="login-password" placeholder="••••••••" required autocomplete="current-password" style="padding-right:48px;" />
+          <button type="button" onclick="toggleLoginPassword()" title="Show/hide password"
+            style="position:absolute;right:14px;bottom:12px;background:none;border:none;color:var(--gray-300);cursor:pointer;font-size:18px;line-height:1;padding:0;" id="pw-toggle">👁</button>
         </div>
-        <button type="submit" class="btn-primary" style="margin-top: 8px; width: 100%;">Sign In</button>
+        <div id="login-error" style="display:none;color:#ef4444;font-size:13px;margin-bottom:8px;padding:10px 14px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:10px;"></div>
+        <button type="submit" class="btn-primary" style="margin-top:8px; width:100%;" id="login-submit-btn">Sign In</button>
       </form>
     </div>
   </div>

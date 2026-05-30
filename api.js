@@ -333,12 +333,12 @@ const API = (() => {
     // ------------------------------------------------------------
 
     // 10. Owner Login
-    ownerLogin: async (username, password) => {
+    ownerLogin: async (username, password, role = 'owner') => {
       if (CONFIG.API_MODE === 'live') {
         const res = await fetch(`${CONFIG.API_BASE_URL}/api/${CONFIG.API_VERSION}/auth/login`, {
           method: 'POST',
           headers: getHeaders(),
-          body: JSON.stringify({ username, password }),
+          body: JSON.stringify({ username, password, role }),
         });
         const data = await handleResponse(res);
         if (data.token) {
@@ -347,15 +347,36 @@ const API = (() => {
         return data;
       } else {
         await delay(600);
-        if (username && password) {
-          const fakeToken = `mock_jwt_${btoa(username)}_${Date.now()}`;
-          localStorage.setItem(CONFIG.AUTH_TOKEN_KEY, fakeToken);
-          // Auto assign first restaurant (Romulo Cafe) to this login
-          mockClaimedRestaurantId = 1;
-          localStorage.setItem('tm_claimed_restaurant_id', '1');
-          return { success: true, token: fakeToken, restaurantId: 1 };
+
+        // ── Mock Credentials ──────────────────────────────────
+        const MOCK_USERS = {
+          admin: [
+            { username: 'admin', password: 'admin123', displayName: 'Admin', restaurantId: null }
+          ],
+          owner: [
+            { username: 'owner@romulo.com', password: 'owner123', displayName: 'Romulo Cafe Owner', restaurantId: 1 }
+          ]
+        };
+
+        const candidates = MOCK_USERS[role] || [];
+        const match = candidates.find(u => u.username === username && u.password === password);
+
+        if (!match) {
+          if (!username || !password) throw new Error('Please enter both username and password.');
+          throw new Error('❌ Incorrect username or password. Check the hint card above.');
         }
-        throw new Error('Please enter both username and password');
+
+        const fakeToken = `mock_jwt_${btoa(username)}_${Date.now()}`;
+        localStorage.setItem(CONFIG.AUTH_TOKEN_KEY, fakeToken);
+        localStorage.setItem('tm_user_role', role);
+        localStorage.setItem('tm_user_name', match.displayName);
+
+        // Set claimed restaurant
+        const claimedId = match.restaurantId ?? 1;
+        mockClaimedRestaurantId = claimedId;
+        localStorage.setItem('tm_claimed_restaurant_id', String(claimedId));
+
+        return { success: true, token: fakeToken, role, displayName: match.displayName, restaurantId: claimedId };
       }
     },
 

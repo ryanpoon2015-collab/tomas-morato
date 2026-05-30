@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tomas Morato — Discover Where to Eat in Quezon City</title>
+  <meta name="description" content="Discover the best restaurants along Tomas Morato Avenue, Quezon City. Use our Food Radar, Food Wheel, and Food Swipe to find your next great meal." />
+  <meta property="og:title" content="Tomas Morato — Discover Where to Eat" />
+  <meta property="og:description" content="Find the best restaurants along Tomas Morato Avenue using interactive tools." />
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Global Aerial Background -->
+  <div class="bg-aerial"></div>
+
+  <!-- ==================== NAVIGATION ==================== -->
+  <nav id="main-nav">
+    <div class="nav-logo" data-page="home" onclick="navigateTo('home')">
+      <span class="logo-top">TOMAS</span>
+      <span class="logo-bottom">MORATO</span>
+    </div>
+
+    <svg class="nav-pin" viewBox="0 0 24 24" fill="none" stroke="#FF6B00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+      <circle cx="12" cy="10" r="3"/>
+    </svg>
+
+    <div class="nav-links">
+      <div class="nav-link" data-page="food-radar" id="nav-radar">🗺️ Food Radar</div>
+      <div class="nav-link" data-page="restaurant-list" id="nav-list">🍽️ Restaurant List</div>
+      <div class="nav-link" data-page="food-wheel" id="nav-wheel">🎡 Food Wheel</div>
+      <div class="nav-link" data-page="food-swipe" id="nav-swipe">💘 Food Swipe</div>
+    </div>
+
+    <div class="nav-right">
+      <button class="btn-owner" data-page="dashboard" onclick="navigateTo('dashboard')">🏪 For Owners</button>
+    </div>
+  </nav>
+
+  <!-- ==================== HOME PAGE ==================== -->
+  <section id="home" class="page-section">
+    <div class="hero-content">
+      <div class="hero-text">
+        <div class="hero-badge">
+          <span class="pulse-dot"></span>
+          Tomas Morato Ave, Quezon City
+        </div>
+        <h1 class="hero-title">Where to<br><span>eat?</span></h1>
+        <p class="hero-desc">
+          Whether you're hunting for the perfect third-wave coffee spot to kickstart your morning,
+          a hidden-gem bistro for date night, or a lively restobar to unwind with friends after hours,
+          <strong>Tomas Morato Avenue</strong> is where Quezon City comes to eat.
+        </p>
+        <p class="hero-desc">
+          Spanning across the heart of the city, this iconic culinary strip blends old-school favorites
+          with cutting-edge food concepts. Your next great meal is just a block away. Ready to dig in?
+        </p>
+        <div class="hero-cta">
+          <button class="btn-primary" data-page="food-radar" onclick="navigateTo('food-radar')">
+            🗺️ Find Nearby
+          </button>
+          <button class="btn-secondary" data-page="food-wheel" onclick="navigateTo('food-wheel')">
+            🎡 Spin the Wheel
+          </button>
+        </div>
+        <div class="hero-stats">
+          <div class="stat-item">
+            <div class="stat-num">15+</div>
+            <div class="stat-label">Restaurants</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-num">5km</div>
+            <div class="stat-label">Radius Search</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-num">4.5★</div>
+            <div class="stat-label">Avg Rating</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-visual">
+        <div class="hero-plate-wrap">
+          <div class="hero-glow-ring"></div>
+          <img class="hero-food-img" src="img/hero_food.png" alt="Delicious food at Tomas Morato" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Filter Strip -->
+    <div class="hero-quick-filters">
+      <div class="quick-filter-chip" onclick="quickFilter('open-now')">🟢 Open Now</div>
+      <div class="quick-filter-chip" onclick="quickFilter('date-night')">💕 Date Night</div>
+      <div class="quick-filter-chip" onclick="quickFilter('vegan')">🌱 Vegan Friendly</div>
+      <div class="quick-filter-chip" onclick="quickFilter('study')">💻 Work-Friendly</div>
+      <div class="quick-filter-chip" onclick="quickFilter('halal')">☪️ Halal</div>
+      <div class="quick-filter-chip" onclick="navigateTo('food-swipe')">💘 Group Decide</div>
+      <div class="quick-filter-chip" onclick="navigateTo('food-wheel')">🎡 Randomize</div>
+    </div>
+  </section>
+
+  <!-- ==================== FOOD RADAR PAGE ==================== -->
+  <section id="food-radar" class="page-section">
+    <div class="section-header" style="padding-bottom:16px;">
+      <div class="section-title-group">
+        <div class="section-eyebrow">Location Based</div>
+        <h2 class="section-title"><span class="highlight">Food</span> Radar</h2>
+      </div>
+      <div style="font-size:14px;color:var(--gray-300);">Drag the slider to adjust your search radius</div>
+    </div>
+
+    <div class="radar-layout">
+      <!-- Map Panel -->
+      <div class="radar-map-panel">
+        <!-- Filter chips over map -->
+        <div class="map-filter-bar">
+          <div class="map-filter-chip" data-filter="open-now">🟢 Open Now</div>
+          <div class="map-filter-chip" data-filter="date-night">💕 Date Night</div>
+          <div class="map-filter-chip" data-filter="vegan">🌱 Vegan</div>
+          <div class="map-filter-chip" data-filter="halal">☪️ Halal</div>
+        </div>
+
+        <!-- Leaflet Map -->
+        <div id="leaflet-map"></div>
+
+        <!-- Radius Controls -->
+        <div class="map-controls-overlay">
+          <div class="radius-label">
+            <span>Search Radius</span>
+            <span class="radius-val" id="radius-display">1.5 km</span>
+          </div>
+          <input type="range" id="radar-slider" min="0.5" max="5" step="0.5" value="1.5" />
+          <div class="radius-ticks">
+            <span>0.5</span><span>1.0</span><span>1.5</span><span>2.0</span><span>2.5</span><span>3.0</span><span>3.5</span><span>4.0</span><span>4.5</span><span>5.0 km</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sidebar -->
+      <div class="radar-sidebar">
+        <div class="radar-sidebar-header">
+          <div class="radar-places-title"><span class="accent">PLACES</span><br>NEAR YOU</div>
+          <div class="radar-count" id="radar-count">Loading…</div>
+        </div>
+        <div id="radar-list">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== RESTAURANT LIST PAGE ==================== -->
+  <section id="restaurant-list" class="page-section">
+    <div class="section-header">
+      <div class="section-title-group">
+        <div class="section-eyebrow">Browse All</div>
+        <h2 class="section-title"><span class="highlight">Restaurant</span> List</h2>
+      </div>
+      <div id="list-count" style="font-size:14px;color:var(--gray-300);">15 restaurants</div>
+    </div>
+
+    <!-- Filters -->
+    <div class="list-controls">
+      <div class="search-bar">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="list-search" placeholder="Search restaurants, cuisine…" />
+      </div>
+      <div class="filter-group">
+        <select class="filter-select" id="filter-cuisine">
+          <option value="">All Cuisines</option>
+          <option value="Filipino">Filipino</option>
+          <option value="Italian">Italian</option>
+          <option value="Japanese">Japanese</option>
+          <option value="Mexican">Mexican</option>
+          <option value="Steakhouse">Steakhouse</option>
+          <option value="Seafood">Seafood</option>
+          <option value="Café">Café</option>
+          <option value="Health">Organic / Health</option>
+          <option value="Buffet">Buffet</option>
+          <option value="Milk Tea">Milk Tea</option>
+        </select>
+        <select class="filter-select" id="filter-ambiance">
+          <option value="">All Ambiance</option>
+          <option value="date-night">💕 Date Night</option>
+          <option value="family">👨‍👩‍👧 Family</option>
+          <option value="study-friendly">💻 Study-Friendly</option>
+          <option value="pet-friendly">🐾 Pet-Friendly</option>
+        </select>
+        <select class="filter-select" id="filter-dietary">
+          <option value="">All Dietary</option>
+          <option value="vegan">🌱 Vegan</option>
+          <option value="vegetarian">🥦 Vegetarian</option>
+          <option value="halal">☪️ Halal</option>
+          <option value="gluten-free">🌾 Gluten-Free</option>
+        </select>
+        <button class="filter-toggle" id="filter-open-now">🟢 Open Now</button>
+      </div>
+    </div>
+
+    <!-- Grid -->
+    <div class="restaurant-grid" id="restaurant-grid">
+      <!-- Populated by JS -->
+    </div>
+  </section>
+
+  <!-- ==================== FOOD WHEEL PAGE ==================== -->
+  <section id="food-wheel" class="page-section">
+    <div class="section-header">
+      <div class="section-title-group">
+        <div class="section-eyebrow">Feeling Indecisive?</div>
+        <h2 class="section-title"><span class="highlight">Food</span> Wheel</h2>
+      </div>
+      <div style="font-size:14px;color:var(--gray-300);">Let fate choose your next restaurant</div>
+    </div>
+
+    <div class="wheel-layout">
+      <!-- Filters & Result -->
+      <div class="wheel-left">
+        <div class="wheel-filters-card">
+          <div class="wheel-filter-label">Budget Filter</div>
+          <div class="wheel-chips">
+            <div class="wheel-chip" data-filter="price" data-value="1">₱ Budget</div>
+            <div class="wheel-chip" data-filter="price" data-value="2">₱₱ Moderate</div>
+            <div class="wheel-chip" data-filter="price" data-value="3">₱₱₱ Upscale</div>
+            <div class="wheel-chip" data-filter="price" data-value="4">₱₱₱₱ Fine Dining</div>
+          </div>
+
+          <div class="wheel-filter-label" style="margin-top:4px;">Ambiance Filter</div>
+          <div class="wheel-chips">
+            <div class="wheel-chip" data-filter="ambiance" data-value="date-night">💕 Date Night</div>
+            <div class="wheel-chip" data-filter="ambiance" data-value="family">👨‍👩‍👧 Family</div>
+            <div class="wheel-chip" data-filter="ambiance" data-value="study-friendly">💻 Work-Friendly</div>
+            <div class="wheel-chip" data-filter="ambiance" data-value="pet-friendly">🐾 Pet-Friendly</div>
+          </div>
+        </div>
+
+        <!-- Result -->
+        <div class="wheel-result" id="wheel-result"></div>
+
+        <!-- Tips -->
+        <div style="background:var(--card-glass);border:1px solid var(--border-glass);border-radius:var(--radius-lg);padding:18px;font-size:13px;color:var(--gray-300);line-height:1.7;backdrop-filter:blur(10px);">
+          <strong style="color:var(--white);display:block;margin-bottom:6px;">💡 How it works</strong>
+          Set your filters, click <strong style="color:var(--orange);">SPIN</strong> in the center of the wheel, and let fate decide where you're eating tonight! You can spin as many times as you like.
+        </div>
+      </div>
+
+      <!-- Wheel -->
+      <div class="wheel-right">
+        <div class="wheel-container">
+          <div class="wheel-glow-ring"></div>
+          <canvas id="wheel-canvas" width="380" height="380" class="wheel-canvas"></canvas>
+          <div class="wheel-pointer"></div>
+          <div class="wheel-center-btn" id="wheel-spin-btn" onclick="spinWheel()">SPIN</div>
+        </div>
+        <div style="font-size:13px;color:var(--gray-300);text-align:center;">
+          ↑ Click the center button or use the SPIN button
+        </div>
+        <button class="btn-primary" onclick="spinWheel()" style="padding:14px 40px;font-size:16px;">🎡 Spin the Wheel!</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== FOOD SWIPE PAGE ==================== -->
+  <section id="food-swipe" class="page-section">
+    <div class="section-header">
+      <div class="section-title-group">
+        <div class="section-eyebrow">Group Decision Maker</div>
+        <h2 class="section-title"><span class="highlight">Food</span> Swipe</h2>
+      </div>
+      <div style="font-size:14px;color:var(--gray-300);">Swipe right to like, left to skip</div>
+    </div>
+
+    <div class="swipe-layout">
+      <!-- Left Panel -->
+      <div class="swipe-left">
+        <!-- Group Room -->
+        <div class="swipe-room-card">
+          <h3>👥 Group Room</h3>
+          <p style="font-size:13px;color:var(--gray-300);margin-bottom:14px;">Create a room and invite friends. When everyone swipes right on the same place — it's a match!</p>
+          <div class="room-input-row">
+            <input type="text" class="room-input" id="room-join-input" placeholder="Enter room code…" maxlength="6" style="text-transform:uppercase;" />
+            <button class="btn-room" onclick="joinRoom()">Join</button>
+          </div>
+          <button class="btn-room-outline" onclick="createRoom()">+ Create New Room</button>
+          <div class="room-status" id="room-status"></div>
+          <div style="font-size:12px;color:var(--gray-300);margin-top:10px;">Room: <strong id="room-code-display" style="color:var(--orange);">None</strong></div>
+          <div class="room-members" id="room-members-list"></div>
+        </div>
+
+        <!-- Score Card -->
+        <div class="swipe-score-card">
+          <div style="font-size:12px;text-transform:uppercase;letter-spacing:2px;color:var(--gray-300);margin-bottom:16px;">Your Session</div>
+          <div class="score-row">
+            <div class="score-item">
+              <div class="score-num liked" id="swipe-liked">0</div>
+              <div class="score-label">Liked ❤️</div>
+            </div>
+            <div class="score-item">
+              <div class="score-num skipped" id="swipe-skipped">0</div>
+              <div class="score-label">Skipped ✕</div>
+            </div>
+            <div class="score-item">
+              <div class="score-num" id="swipe-left">15</div>
+              <div class="score-label">Remaining</div>
+            </div>
+          </div>
+          <button class="btn-room-outline" onclick="resetSwipe()" style="margin-top:12px;font-size:12px;padding:8px;">🔄 Reset</button>
+        </div>
+
+        <!-- Tips -->
+        <div style="background:var(--card-glass);border:1px solid var(--border-glass);border-radius:var(--radius-lg);padding:16px;font-size:13px;color:var(--gray-300);line-height:1.7;backdrop-filter:blur(10px);margin-top:16px;">
+          <strong style="color:var(--white);">👆 How to Swipe</strong><br>
+          • Drag card right = ❤️ Like<br>
+          • Drag card left = ✕ Skip<br>
+          • Use buttons below the cards<br>
+          • In group mode, matches notify everyone!
+        </div>
+      </div>
+
+      <!-- Swipe Cards -->
+      <div class="swipe-right">
+        <div class="swipe-card-stack" id="swipe-stack">
+          <!-- Populated by JS -->
+        </div>
+
+        <div class="swipe-actions">
+          <button class="swipe-btn swipe-btn-nope" id="swipe-nope-btn" onclick="doSwipeNope()" title="Skip">✕</button>
+          <button class="swipe-btn swipe-btn-like" id="swipe-like-btn" onclick="doSwipeLike()" title="Like">❤️</button>
+        </div>
+        <div style="font-size:12px;color:var(--gray-500);">Drag or use buttons · Keyboard: ← / →</div>
+      </div>
+    </div>
+
+    <!-- Match Overlay -->
+    <div class="match-notification" id="match-notification">
+      <div class="match-fire">🔥</div>
+      <div class="match-title">IT'S A MATCH!</div>
+      <div class="match-subtitle">Everyone wants to eat at</div>
+      <div style="font-family:var(--font-display);font-size:48px;color:var(--white);margin-bottom:6px;" id="match-name"></div>
+      <div style="font-size:16px;color:var(--gray-300);margin-bottom:28px;" id="match-sub"></div>
+      <button class="btn-match-close" onclick="closeMatch()">Let's Go! →</button>
+    </div>
+  </section>
+
+  <!-- ==================== OWNER DASHBOARD ==================== -->
+  <section id="dashboard" class="page-section">
+    <div class="section-header" style="padding-bottom:0;">
+      <div class="section-title-group">
+        <div class="section-eyebrow">Restaurant Owner</div>
+        <h2 class="section-title"><span class="highlight">Owner</span> Dashboard</h2>
+      </div>
+    </div>
+
+    <div class="dashboard-layout">
+      <!-- Sidebar Nav -->
+      <div class="dashboard-sidebar">
+        <div class="dash-claim-banner">
+          <strong>🏪 Claim Your Restaurant</strong>
+          Manage your profile, push promos, and handle your digital queue — all in one place.
+        </div>
+        <div class="dash-nav-item active" onclick="switchDashPanel('dash-overview', this)">
+          <span class="dash-nav-icon">📊</span> Overview
+        </div>
+        <div class="dash-nav-item" onclick="switchDashPanel('dash-promos', this)">
+          <span class="dash-nav-icon">🔥</span> Daily Specials
+        </div>
+        <div class="dash-nav-item" onclick="switchDashPanel('dash-queue', this)">
+          <span class="dash-nav-icon">🎟️</span> Digital Queue
+        </div>
+        <div class="dash-nav-item" onclick="switchDashPanel('dash-profile', this)">
+          <span class="dash-nav-icon">✏️</span> Edit Profile
+        </div>
+        <div class="dash-nav-item" onclick="switchDashPanel('dash-analytics', this)">
+          <span class="dash-nav-icon">📈</span> Analytics
+        </div>
+        <div class="dash-nav-item" onclick="ownerLogout()" style="margin-top: auto; border-top: 1px solid var(--border-glass); padding-top: 15px;">
+          <span class="dash-nav-icon">🚪</span> Log Out
+        </div>
+      </div>
+
+      <!-- Main Content -->
+      <div class="dashboard-main">
+
+        <!-- Overview Panel -->
+        <div class="dash-panel active" id="dash-overview">
+          <div class="dash-stats-grid">
+            <div class="stat-card">
+              <div class="stat-card-label">Page Views Today</div>
+              <div class="stat-card-value">248</div>
+              <div class="stat-card-change">↑ 12% vs yesterday</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-label">Queue Today</div>
+              <div class="stat-card-value" id="dash-seated-today">32</div>
+              <div class="stat-card-change">↑ 8 still waiting</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-label">Swipe Matches</div>
+              <div class="stat-card-value">17</div>
+              <div class="stat-card-change">↑ 41% this week</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-label">Avg Rating</div>
+              <div class="stat-card-value" style="color:var(--orange);">4.7</div>
+              <div class="stat-card-change">Based on 284 reviews</div>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:8px;">
+            <!-- Active Promo -->
+            <div style="background:var(--card-glass);border:1px solid var(--border-glass);border-radius:var(--radius-xl);padding:24px;backdrop-filter:blur(10px);">
+              <div style="font-size:12px;text-transform:uppercase;letter-spacing:2px;color:var(--gray-300);margin-bottom:16px;">🔥 Active Promo</div>
+              <div class="daily-special-banner" style="margin:0;">
+                <div class="special-icon">🥩</div>
+                <div class="special-info">
+                  <div class="special-title">Date Night Special</div>
+                  <div class="special-desc">2 steaks + bottle of wine for ₱3,500</div>
+                  <div class="special-valid">Fri–Sat only</div>
+                </div>
+              </div>
+              <button class="btn-publish" style="margin-top:16px;width:100%;" onclick="switchDashPanel('dash-promos', document.querySelector('.dash-nav-item:nth-child(3)'))">Edit Promo →</button>
+            </div>
+
+            <!-- Quick Queue Preview -->
+            <div style="background:var(--card-glass);border:1px solid var(--border-glass);border-radius:var(--radius-xl);padding:24px;backdrop-filter:blur(10px);">
+              <div style="font-size:12px;text-transform:uppercase;letter-spacing:2px;color:var(--gray-300);margin-bottom:16px;">🎟️ Queue Preview</div>
+              <div style="font-family:var(--font-display);font-size:52px;color:var(--orange);line-height:1;" id="dash-queue-count">4</div>
+              <div style="font-size:14px;color:var(--gray-300);margin-bottom:16px;">Groups currently waiting</div>
+              <div style="font-size:13px;color:var(--white);">Next: <strong style="color:var(--orange);">#12 Santos Family</strong> (4 pax)</div>
+              <button class="btn-publish" style="margin-top:16px;width:100%;background:transparent;border:1px solid var(--border-orange);color:var(--orange);" onclick="switchDashPanel('dash-queue', document.querySelector('.dash-nav-item:nth-child(4)'))">Manage Queue →</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Daily Specials Panel -->
+        <div class="dash-panel" id="dash-promos">
+          <div class="promo-form-card">
+            <h3>🔥 Publish a Daily Special</h3>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="promo-title">Promo Title</label>
+                <input type="text" class="form-input" id="promo-title" placeholder="e.g. Happy Hour, Taco Tuesday…" />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="promo-valid">Valid Until</label>
+                <input type="text" class="form-input" id="promo-valid" placeholder="e.g. Today until 10PM" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="promo-desc">Description</label>
+                <textarea class="form-input" id="promo-desc" rows="3" placeholder="Describe your promo deal…"></textarea>
+              </div>
+            </div>
+            <button class="btn-publish" onclick="publishPromo()">🚀 Publish Now</button>
+            <span style="font-size:13px;color:var(--gray-300);margin-left:12px;">Goes live immediately on your restaurant card</span>
+          </div>
+
+          <!-- Live Preview -->
+          <div style="background:var(--card-glass);border:1px solid var(--border-glass);border-radius:var(--radius-xl);padding:24px;backdrop-filter:blur(10px);">
+            <div style="font-size:12px;text-transform:uppercase;letter-spacing:2px;color:var(--gray-300);margin-bottom:16px;">Live Preview</div>
+            <div id="promo-preview">
+              <div style="font-size:14px;color:var(--gray-500);">Your published promo will appear here.</div>
+            </div>
+          </div>
+
+          <!-- Active Promos List -->
+          <div style="margin-top:24px;background:var(--card-glass);border:1px solid var(--border-glass);border-radius:var(--radius-xl);padding:24px;backdrop-filter:blur(10px);">
+            <div style="font-size:16px;font-weight:700;margin-bottom:16px;">📋 Recent Promos</div>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:14px;background:rgba(255,255,255,0.03);border:1px solid var(--border-glass);border-radius:var(--radius-md);">
+                <div>
+                  <div style="font-weight:600;">Date Night Special</div>
+                  <div style="font-size:13px;color:var(--gray-300);">2 steaks + wine ₱3,500 • Fri–Sat</div>
+                </div>
+                <span style="padding:4px 12px;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);border-radius:20px;font-size:12px;color:#22c55e;">LIVE</span>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:14px;background:rgba(255,255,255,0.03);border:1px solid var(--border-glass);border-radius:var(--radius-md);">
+                <div>
+                  <div style="font-weight:600;">Truffle Tuesday</div>
+                  <div style="font-size:13px;color:var(--gray-300);">Truffle pasta 20% off • Every Tuesday</div>
+                </div>
+                <span style="padding:4px 12px;background:rgba(255,107,0,0.15);border:1px solid var(--border-orange);border-radius:20px;font-size:12px;color:var(--orange);">SCHEDULED</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Queue Manager Panel -->
+        <div class="dash-panel" id="dash-queue">
+          <div class="promo-form-card">
+            <h3>🎟️ Add to Queue</h3>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Guest Name</label>
+                <input type="text" class="form-input" id="queue-name-input" placeholder="e.g. Santos Family" />
+              </div>
+              <div class="form-group" style="max-width:140px;">
+                <label class="form-label">Party Size</label>
+                <input type="number" class="form-input" id="queue-size-input" value="2" min="1" max="20" />
+              </div>
+              <div style="display:flex;align-items:flex-end;">
+                <button class="btn-publish" onclick="addToQueue()">+ Add to Queue</button>
+              </div>
+            </div>
+          </div>
+
+          <div style="background:var(--card-glass);border:1px solid var(--border-glass);border-radius:var(--radius-xl);padding:24px;backdrop-filter:blur(10px);">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+              <div style="font-size:16px;font-weight:700;">📋 Current Queue</div>
+              <div style="font-size:13px;color:var(--gray-300);">Auto-updates as guests check in</div>
+            </div>
+            <div class="queue-list" id="queue-list-container">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Edit Profile Panel -->
+        <div class="dash-panel" id="dash-profile">
+          <div class="promo-form-card">
+            <h3>✏️ Edit Restaurant Profile</h3>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Restaurant Name</label>
+                <input type="text" class="form-input" value="My Restaurant" placeholder="Restaurant name" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Cuisine Type</label>
+                <input type="text" class="form-input" value="Filipino" placeholder="e.g. Italian, Filipino…" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Address</label>
+                <input type="text" class="form-input" placeholder="Full address on Tomas Morato Ave" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Phone Number</label>
+                <input type="text" class="form-input" placeholder="+63 2 XXXX XXXX" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Opening Hours</label>
+                <input type="text" class="form-input" placeholder="e.g. 11:00 AM – 10:00 PM" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Price Range</label>
+                <select class="form-input" style="appearance:auto;">
+                  <option>₱ Budget</option>
+                  <option>₱₱ Moderate</option>
+                  <option selected>₱₱₱ Upscale</option>
+                  <option>₱₱₱₱ Fine Dining</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Description</label>
+                <textarea class="form-input" rows="4" placeholder="Describe your restaurant…"></textarea>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Ambiance Tags</label>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
+                  <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" /> 💕 Date Night</label>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" checked /> 👨‍👩‍👧 Family</label>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" /> 💻 Study-Friendly</label>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" /> 🐾 Pet-Friendly</label>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Dietary Options</label>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
+                  <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" /> 🌱 Vegan</label>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" checked /> 🥦 Vegetarian</label>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" /> ☪️ Halal</label>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" /> 🌾 Gluten-Free</label>
+                </div>
+              </div>
+            </div>
+            <button class="btn-publish" onclick="saveOwnerProfile()">💾 Save Profile</button>
+          </div>
+        </div>
+
+        <!-- Analytics Panel -->
+        <div class="dash-panel" id="dash-analytics">
+          <div style="background:var(--card-glass);border:1px solid var(--border-glass);border-radius:var(--radius-xl);padding:24px;backdrop-filter:blur(10px);margin-bottom:20px;">
+            <div style="font-size:16px;font-weight:700;margin-bottom:20px;">📈 Weekly Page Views</div>
+            <canvas id="visits-chart" height="80"></canvas>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+            <div style="background:var(--card-glass);border:1px solid var(--border-glass);border-radius:var(--radius-xl);padding:24px;backdrop-filter:blur(10px);">
+              <div style="font-size:16px;font-weight:700;margin-bottom:16px;">🍽️ Top Menu Items</div>
+              <div style="display:flex;flex-direction:column;gap:10px;">
+                <div style="display:flex;align-items:center;gap:12px;">
+                  <div style="flex:1;font-size:14px;">USDA Prime Ribeye</div>
+                  <div style="font-size:13px;color:var(--gray-300);">89 views</div>
+                  <div style="width:80px;height:6px;background:var(--gray-700);border-radius:3px;overflow:hidden;"><div style="width:89%;height:100%;background:var(--orange);border-radius:3px;"></div></div>
+                </div>
+                <div style="display:flex;align-items:center;gap:12px;">
+                  <div style="flex:1;font-size:14px;">Wagyu Striploin</div>
+                  <div style="font-size:13px;color:var(--gray-300);">67 views</div>
+                  <div style="width:80px;height:6px;background:var(--gray-700);border-radius:3px;overflow:hidden;"><div style="width:67%;height:100%;background:var(--orange);border-radius:3px;"></div></div>
+                </div>
+                <div style="display:flex;align-items:center;gap:12px;">
+                  <div style="flex:1;font-size:14px;">Molten Lava Cake</div>
+                  <div style="font-size:13px;color:var(--gray-300);">54 views</div>
+                  <div style="width:80px;height:6px;background:var(--gray-700);border-radius:3px;overflow:hidden;"><div style="width:54%;height:100%;background:var(--orange);border-radius:3px;"></div></div>
+                </div>
+                <div style="display:flex;align-items:center;gap:12px;">
+                  <div style="flex:1;font-size:14px;">Truffle Mushroom Soup</div>
+                  <div style="font-size:13px;color:var(--gray-300);">41 views</div>
+                  <div style="width:80px;height:6px;background:var(--gray-700);border-radius:3px;overflow:hidden;"><div style="width:41%;height:100%;background:var(--orange);border-radius:3px;"></div></div>
+                </div>
+              </div>
+            </div>
+            <div style="background:var(--card-glass);border:1px solid var(--border-glass);border-radius:var(--radius-xl);padding:24px;backdrop-filter:blur(10px);">
+              <div style="font-size:16px;font-weight:700;margin-bottom:16px;">🔍 Discovery Source</div>
+              <div style="display:flex;flex-direction:column;gap:10px;">
+                <div style="display:flex;align-items:center;gap:12px;">
+                  <div style="flex:1;font-size:14px;">Food Radar</div>
+                  <div style="font-size:13px;color:var(--orange);font-weight:600;">42%</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:12px;">
+                  <div style="flex:1;font-size:14px;">Restaurant List</div>
+                  <div style="font-size:13px;color:var(--orange);font-weight:600;">31%</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:12px;">
+                  <div style="flex:1;font-size:14px;">Food Swipe</div>
+                  <div style="font-size:13px;color:var(--orange);font-weight:600;">18%</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:12px;">
+                  <div style="flex:1;font-size:14px;">Food Wheel</div>
+                  <div style="font-size:13px;color:var(--orange);font-weight:600;">9%</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== RESTAURANT DETAIL MODAL ==================== -->
+  <div class="modal-overlay" id="restaurant-modal" onclick="if(event.target===this)closeModal()">
+    <div class="modal-box">
+      <div class="modal-content">
+        <!-- Populated dynamically by JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== OWNER LOGIN MODAL ==================== -->
+  <div class="modal-overlay" id="login-modal" onclick="if(event.target===this)closeLoginModal()">
+    <div class="login-box">
+      <button class="modal-close" onclick="closeLoginModal()">✕</button>
+      <div class="login-header">
+        <div class="login-title">Owner Access</div>
+        <div class="login-subtitle">Sign in to manage your restaurant page</div>
+      </div>
+      <form class="login-form" onsubmit="event.preventDefault(); handleOwnerLoginSubmit();">
+        <div class="form-group">
+          <label class="form-label" for="login-username">Email / Username</label>
+          <input type="text" class="form-input" id="login-username" placeholder="owner@romulocafe.com" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="login-password">Password</label>
+          <input type="password" class="form-input" id="login-password" placeholder="••••••••" required />
+        </div>
+        <button type="submit" class="btn-primary" style="margin-top: 8px; width: 100%;">Sign In</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== SCRIPTS ==================== -->
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  
+  <!-- Environment Config -->
+  <script src="config.js"></script>
+  <!-- Data -->
+  <script src="data.js"></script>
+  <!-- API Layer -->
+  <script src="api.js"></script>
+  <!-- App Logic -->
+  <script src="app.js"></script>
+
+  <script>
+    // Keyboard shortcuts for swipe
+    document.addEventListener('keydown', (e) => {
+      const swipeSection = document.getElementById('food-swipe');
+      if (!swipeSection?.classList.contains('active')) return;
+      if (e.key === 'ArrowRight') doSwipeLike();
+      if (e.key === 'ArrowLeft') doSwipeNope();
+    });
+  </script>
+
+</body>
+</html>

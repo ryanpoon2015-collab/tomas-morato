@@ -9,9 +9,9 @@ const PAGES = ['home', 'food-radar', 'restaurant-list', 'food-wheel', 'food-swip
 
 function navigateTo(pageId) {
   if (pageId === 'dashboard') {
-    const token = localStorage.getItem(CONFIG.AUTH_TOKEN_KEY);
+    const token = sessionStorage.getItem(CONFIG.AUTH_TOKEN_KEY);
     if (!token) {
-      openLoginModal();
+      openLoginModal('owner');
       return;
     }
   }
@@ -75,7 +75,7 @@ const CUISINE_EMOJI = {
 };
 
 /* ==================== OWNER LOGIN & LOGOUT ==================== */
-function openLoginModal() {
+function openLoginModal(role = 'owner') {
   document.getElementById('login-modal').classList.add('open');
   document.body.style.overflow = 'hidden';
   // Reset form state
@@ -83,6 +83,9 @@ function openLoginModal() {
   document.getElementById('login-password').value = '';
   const err = document.getElementById('login-error');
   if (err) err.style.display = 'none';
+  
+  // Switch to the requested role tab (defaults to owner)
+  switchLoginTab(role);
 }
 
 function closeLoginModal() {
@@ -95,9 +98,7 @@ function switchLoginTab(role) {
   // Toggle tabs
   document.querySelectorAll('.login-tab').forEach(t => t.classList.remove('active'));
   document.getElementById(`tab-${role}`).classList.add('active');
-  // Toggle hint cards
-  document.getElementById('hint-admin').style.display = role === 'admin' ? 'block' : 'none';
-  document.getElementById('hint-owner').style.display = role === 'owner' ? 'block' : 'none';
+
   // Clear errors
   const err = document.getElementById('login-error');
   if (err) err.style.display = 'none';
@@ -125,10 +126,10 @@ async function handleOwnerLoginSubmit() {
     const res = await API.ownerLogin(user, pass, role);
 
     // Handle pending claim
-    const pendingClaimId = localStorage.getItem('pending_claim_id');
+    const pendingClaimId = sessionStorage.getItem('pending_claim_id');
     if (pendingClaimId) {
       await API.claimRestaurant(parseInt(pendingClaimId));
-      localStorage.removeItem('pending_claim_id');
+      sessionStorage.removeItem('pending_claim_id');
       showToast('Listing claimed successfully!', '🏪');
     } else {
       showToast(`Welcome back, ${res.displayName}!`, '✅');
@@ -146,21 +147,21 @@ async function handleOwnerLoginSubmit() {
 }
 
 function ownerLogout() {
-  localStorage.removeItem(CONFIG.AUTH_TOKEN_KEY);
-  localStorage.removeItem('tm_user_role');
-  localStorage.removeItem('tm_user_name');
+  sessionStorage.removeItem(CONFIG.AUTH_TOKEN_KEY);
+  sessionStorage.removeItem('tm_user_role');
+  sessionStorage.removeItem('tm_user_name');
   showToast('Logged out successfully', '🚪');
   navigateTo('home');
 }
 
 async function claimListing(id) {
   try {
-    const token = localStorage.getItem(CONFIG.AUTH_TOKEN_KEY);
+    const token = sessionStorage.getItem(CONFIG.AUTH_TOKEN_KEY);
     if (!token) {
       showToast('Please sign in to claim this listing', '🔑');
-      localStorage.setItem('pending_claim_id', id);
+      sessionStorage.setItem('pending_claim_id', id);
       closeModal();
-      openLoginModal();
+      openLoginModal('owner');
       return;
     }
     showToast('Claiming restaurant...', '🏪');
@@ -1160,7 +1161,7 @@ async function initDashboard() {
   } catch (err) {
     showToast(err.message, '❌');
     // If not claimed or authorized, let them logout or return to home
-    localStorage.removeItem(CONFIG.AUTH_TOKEN_KEY);
+    sessionStorage.removeItem(CONFIG.AUTH_TOKEN_KEY);
     navigateTo('home');
   } finally {
     overlay.remove();

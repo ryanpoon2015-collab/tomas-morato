@@ -9,7 +9,7 @@ const API = (() => {
 
   // Get Auth Token from LocalStorage
   const getAuthToken = () => {
-    return localStorage.getItem(CONFIG.AUTH_TOKEN_KEY) || '';
+    return sessionStorage.getItem(CONFIG.AUTH_TOKEN_KEY) || '';
   };
 
   // Build live request headers
@@ -40,7 +40,7 @@ const API = (() => {
   };
 
   // Mock State (shared in memory for mock mode, backed by localStorage where appropriate)
-  let mockClaimedRestaurantId = parseInt(localStorage.getItem('tm_claimed_restaurant_id') || '1');
+  let mockClaimedRestaurantId = parseInt(sessionStorage.getItem('tm_claimed_restaurant_id') || '1');
   
   // Initialize mock queue in localStorage if not exists
   if (!localStorage.getItem('tm_mock_queues')) {
@@ -342,7 +342,7 @@ const API = (() => {
         });
         const data = await handleResponse(res);
         if (data.token) {
-          localStorage.setItem(CONFIG.AUTH_TOKEN_KEY, data.token);
+          sessionStorage.setItem(CONFIG.AUTH_TOKEN_KEY, data.token);
         }
         return data;
       } else {
@@ -363,18 +363,18 @@ const API = (() => {
 
         if (!match) {
           if (!username || !password) throw new Error('Please enter both username and password.');
-          throw new Error('❌ Incorrect username or password. Check the hint card above.');
+          throw new Error('❌ Incorrect username or password.');
         }
 
         const fakeToken = `mock_jwt_${btoa(username)}_${Date.now()}`;
-        localStorage.setItem(CONFIG.AUTH_TOKEN_KEY, fakeToken);
-        localStorage.setItem('tm_user_role', role);
-        localStorage.setItem('tm_user_name', match.displayName);
+        sessionStorage.setItem(CONFIG.AUTH_TOKEN_KEY, fakeToken);
+        sessionStorage.setItem('tm_user_role', role);
+        sessionStorage.setItem('tm_user_name', match.displayName);
 
         // Set claimed restaurant
         const claimedId = match.restaurantId ?? 1;
         mockClaimedRestaurantId = claimedId;
-        localStorage.setItem('tm_claimed_restaurant_id', String(claimedId));
+        sessionStorage.setItem('tm_claimed_restaurant_id', String(claimedId));
 
         return { success: true, token: fakeToken, role, displayName: match.displayName, restaurantId: claimedId };
       }
@@ -392,7 +392,7 @@ const API = (() => {
       } else {
         await delay(500);
         mockClaimedRestaurantId = parseInt(restaurantId);
-        localStorage.setItem('tm_claimed_restaurant_id', restaurantId.toString());
+        sessionStorage.setItem('tm_claimed_restaurant_id', restaurantId.toString());
         return { success: true, claimedId: mockClaimedRestaurantId };
       }
     },

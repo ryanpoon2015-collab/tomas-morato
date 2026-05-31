@@ -2585,6 +2585,222 @@ textarea.form-input { resize: vertical; min-height: 80px; }
   transform: scale(1.05);
 }
 
+/* ==================== ABOUT US PAGE STYLES ==================== */
+#about-us {
+  padding-top: 80px;
+}
+
+.about-layout {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 32px;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 40px 40px;
+}
+
+.about-story-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.about-card {
+  background: var(--card-glass);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-xl);
+  padding: 32px;
+  backdrop-filter: blur(10px);
+}
+
+.hero-story h3 {
+  font-family: var(--font-display);
+  font-size: 32px;
+  color: var(--orange);
+  margin-bottom: 16px;
+  letter-spacing: 1px;
+}
+
+.hero-story p {
+  font-size: 15px;
+  line-height: 1.8;
+  color: var(--gray-100);
+}
+
+.about-pillars-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.pillar-card {
+  background: var(--card-glass);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-lg);
+  padding: 24px 20px;
+  backdrop-filter: blur(10px);
+  text-align: center;
+  transition: var(--transition);
+}
+
+.pillar-card:hover {
+  transform: translateY(-5px);
+  border-color: var(--border-orange);
+  box-shadow: var(--shadow-glow);
+}
+
+.pillar-icon {
+  font-size: 36px;
+  margin-bottom: 14px;
+}
+
+.pillar-card h4 {
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--white);
+  margin-bottom: 8px;
+}
+
+.pillar-card p {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--gray-300);
+}
+
+.about-contact-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.contact-card {
+  background: var(--card-glass);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-xl);
+  padding: 32px;
+  backdrop-filter: blur(10px);
+  position: relative;
+}
+
+.contact-card h3 {
+  font-family: var(--font-display);
+  font-size: 28px;
+  color: var(--white);
+  margin-bottom: 10px;
+}
+
+.contact-success-state {
+  text-align: center;
+  padding: 40px 0;
+  animation: fadeIn 0.4s ease;
+}
+
+.success-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  animation: bounce 1s infinite alternate;
+}
+
+.contact-success-state h4 {
+  font-family: var(--font-display);
+  font-size: 28px;
+  color: var(--orange);
+  margin-bottom: 8px;
+}
+
+.contact-details-card {
+  background: var(--card-glass);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-xl);
+  padding: 24px 32px;
+  backdrop-filter: blur(10px);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.detail-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.detail-icon {
+  font-size: 20px;
+  color: var(--orange);
+  background: rgba(255,107,0,0.1);
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--border-orange);
+  flex-shrink: 0;
+}
+
+.detail-item strong {
+  display: block;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--gray-300);
+  margin-bottom: 2px;
+}
+
+.detail-item span {
+  font-size: 14px;
+  color: var(--white);
+  line-height: 1.5;
+}
+
+/* ==================== MENU EDITOR STYLES ==================== */
+.dash-menu-item-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  transition: var(--transition);
+  flex-wrap: wrap;
+}
+
+.dash-menu-item-row:hover {
+  background: rgba(255,255,255,0.04);
+  border-color: rgba(255,107,0,0.2);
+}
+
+.dash-menu-item-actions {
+  display: flex;
+  align-items: center;
+  align-self: flex-end;
+  height: 44px; /* matches .form-input height + border */
+}
+
+.btn-delete-item {
+  background: transparent;
+  color: #ef4444;
+  border: 1px solid rgba(239,68,68,0.3);
+  border-radius: var(--radius-md);
+  padding: 0 16px;
+  height: 100%;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-delete-item:hover {
+  background: rgba(239,68,68,0.1);
+  border-color: #ef4444;
+}
+
 /* ==================== CELLPHONE RESPONSIVE MEDIA QUERIES ==================== */
 
 /* 1. Universal layout adjustments for smaller viewports */
@@ -2730,6 +2946,20 @@ textarea.form-input { resize: vertical; min-height: 80px; }
     width: 100%;
   }
   
+  /* About Us Stacked Layout */
+  .about-layout {
+    grid-template-columns: 1fr;
+    padding: 0 16px 16px;
+    gap: 24px;
+  }
+  .about-pillars-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .about-card, .contact-card {
+    padding: 24px;
+  }
+
   /* Owner Dashboard Responsive Styles */
   .dashboard-layout {
     grid-template-columns: 1fr;

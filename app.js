@@ -5,7 +5,7 @@
 // ============================================================
 
 /* ==================== ROUTER ==================== */
-const PAGES = ['home', 'food-radar', 'restaurant-list', 'food-wheel', 'food-swipe', 'dashboard'];
+const PAGES = ['home', 'food-radar', 'restaurant-list', 'food-wheel', 'food-swipe', 'about-us', 'dashboard'];
 
 function toggleMobileNav() {
   const wrapper = document.getElementById('nav-menu-wrapper');
@@ -72,6 +72,55 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
+/* ==================== ABOUT US & CONTACT FORM ==================== */
+function handleContactSubmit() {
+  const name = document.getElementById('contact-name').value.trim();
+  const email = document.getElementById('contact-email').value.trim();
+  const subject = document.getElementById('contact-subject').value.trim();
+  const message = document.getElementById('contact-message').value.trim();
+  const submitBtn = document.getElementById('contact-submit-btn');
+
+  if (!name || !email || !subject || !message) {
+    showToast('Please fill out all fields.', '⚠️');
+    return;
+  }
+
+  // Simple email pattern validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    showToast('Please enter a valid email address.', '⚠️');
+    return;
+  }
+
+  // Disable button to show processing
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Sending...';
+
+  // Simulate network request
+  setTimeout(() => {
+    // Hide form container, show success container
+    document.getElementById('contact-form-container').style.display = 'none';
+    document.getElementById('contact-success').style.display = 'block';
+
+    showToast('Message sent! Thank you.', '✉️');
+
+    submitBtn.disabled = false;
+    submitBtn.textContent = '🚀 Send Message';
+  }, 1000);
+}
+
+function resetContactForm() {
+  // Clear inputs
+  document.getElementById('contact-name').value = '';
+  document.getElementById('contact-email').value = '';
+  document.getElementById('contact-subject').value = '';
+  document.getElementById('contact-message').value = '';
+
+  // Show form container, hide success container
+  document.getElementById('contact-form-container').style.display = 'block';
+  document.getElementById('contact-success').style.display = 'none';
+}
+
 /* ==================== TOAST SYSTEM ==================== */
 function showToast(message, icon = '🍴') {
   const container = document.querySelector('.toast-container');
@@ -100,7 +149,7 @@ function openLoginModal(role = 'owner') {
   document.getElementById('login-password').value = '';
   const err = document.getElementById('login-error');
   if (err) err.style.display = 'none';
-  
+
   // Switch to the requested role tab (defaults to owner)
   switchLoginTab(role);
 }
@@ -641,7 +690,7 @@ async function openRestaurantModal(id) {
         <!-- Tab: Menu -->
         <div class="tab-panel active" id="tab-menu">
           <div class="menu-categories">
-            ${r.menu.map((cat, i) => `<button class="menu-cat-btn ${i===0?'active':''}" onclick="switchMenuCat(${i}, this, ${r.id})">${cat.category}</button>`).join('')}
+            ${r.menu.map((cat, i) => `<button class="menu-cat-btn ${i === 0 ? 'active' : ''}" onclick="switchMenuCat(${i}, this, ${r.id})">${cat.category}</button>`).join('')}
           </div>
           <div class="menu-items-list" id="menu-items-${r.id}">
             ${renderMenuItems(r.menu[0].items)}
@@ -765,7 +814,7 @@ async function reportWaitTime(id, waitTime, container) {
     container.querySelectorAll('.wait-opt-btn')[idx].classList.add(cls);
     const label = WAIT_LABELS[waitTime].label;
     showToast(`Wait time updated: ${label}`, WAIT_LABELS[waitTime].icon);
-    
+
     // Update dashboard wait time selection if active
     if (currentOwnerRestaurant && currentOwnerRestaurant.id === id) {
       currentOwnerRestaurant.waitTime = waitTime;
@@ -792,7 +841,7 @@ async function submitJoinQueue(restaurantId) {
   const sizeInput = document.getElementById('join-queue-size');
   const name = nameInput?.value?.trim();
   const size = parseInt(sizeInput?.value) || 2;
-  
+
   if (!name) {
     showToast('Please enter your name!', '⚠️');
     return;
@@ -813,7 +862,7 @@ async function submitJoinQueue(restaurantId) {
       `;
     }
     showToast(`You're #${result.queueNumber} in the queue!`, '🎟️');
-    
+
     // Refresh parent page if listing is open
     const countDisplay = document.getElementById('queue-waiting-count');
     if (countDisplay) {
@@ -894,8 +943,8 @@ function drawWheel() {
   const sliceAngle = (2 * Math.PI) / N;
 
   const COLORS = [
-    '#FF6B00','#CC5500','#E85C00','#FF8C38','#D45200',
-    '#B84500','#FF7722','#E06000','#FF9944','#CC4400'
+    '#FF6B00', '#CC5500', '#E85C00', '#FF8C38', '#D45200',
+    '#B84500', '#FF7722', '#E06000', '#FF9944', '#CC4400'
   ];
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -923,7 +972,7 @@ function drawWheel() {
     ctx.rotate(start + sliceAngle / 2);
     ctx.textAlign = 'right';
     ctx.fillStyle = 'white';
-    ctx.font = `bold ${Math.max(10, 14 - Math.floor(N/5))}px Outfit, sans-serif`;
+    ctx.font = `bold ${Math.max(10, 14 - Math.floor(N / 5))}px Outfit, sans-serif`;
     ctx.shadowColor = 'rgba(0,0,0,0.5)';
     ctx.shadowBlur = 4;
     const name = restaurants[i].name.length > 14 ? restaurants[i].name.slice(0, 12) + '…' : restaurants[i].name;
@@ -1048,7 +1097,7 @@ function renderSwipeCards() {
         <button class="btn-secondary" onclick="resetSwipe()" style="padding:10px 20px;font-size:13px;font-weight:600;background:transparent;border:1px solid var(--border-orange);color:var(--orange);">🔄 Start Over</button>
       </div>
     </div>`;
-    
+
     // Automatically display the summary list modal
     showLikedSummary();
     return;
@@ -1057,7 +1106,7 @@ function renderSwipeCards() {
   stack.innerHTML = toShow.map((r, i) => {
     const emoji = CUISINE_EMOJI[r.cuisine] || '🍴';
     return `
-      <div class="swipe-card" id="swipe-card-${r.id}" data-id="${r.id}" style="z-index:${3-i};">
+      <div class="swipe-card" id="swipe-card-${r.id}" data-id="${r.id}" style="z-index:${3 - i};">
         <div class="swipe-like-label" id="like-label-${r.id}">LIKE</div>
         <div class="swipe-nope-label" id="nope-label-${r.id}">NOPE</div>
         <div class="swipe-card-img-placeholder" style="background:linear-gradient(135deg, ${r.imgColor}, #0F0C0A);">${emoji}</div>
@@ -1066,7 +1115,7 @@ function renderSwipeCards() {
           <div class="swipe-card-sub" style="text-align:left;">${r.cuisine} • ${priceSymbol(r.priceRange)}</div>
           <div class="swipe-card-footer">
             <div class="swipe-card-rating">⭐ ${r.rating} (${r.reviews})</div>
-            <div style="font-size:12px;color:var(--gray-300);">${r.ambiance.slice(0,1).map(a => AMBIANCE_LABELS[a]).join('')}</div>
+            <div style="font-size:12px;color:var(--gray-300);">${r.ambiance.slice(0, 1).map(a => AMBIANCE_LABELS[a]).join('')}</div>
           </div>
         </div>
       </div>
@@ -1110,11 +1159,11 @@ function bindSwipeDrag(card) {
       const dir = dx > 0 ? 1 : -1;
       card.style.transform = `translateX(${dir * 500}px) rotate(${dir * 30}deg)`;
       card.style.opacity = '0';
-      
+
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onEnd);
       window.removeEventListener('touchend', onEnd);
-      
+
       setTimeout(() => {
         if (dir === 1) swipeLike(parseInt(id));
         else swipeNope(parseInt(id));
@@ -1259,21 +1308,21 @@ function deleteRoom() {
   const oldCode = roomCode;
   roomCode = null;
   document.getElementById('room-code-display').textContent = 'None';
-  
+
   const status = document.getElementById('room-status');
   if (status) {
     status.classList.remove('show');
     status.textContent = '';
   }
-  
+
   const membersList = document.getElementById('room-members-list');
   if (membersList) {
     membersList.innerHTML = '';
   }
-  
+
   const input = document.getElementById('room-join-input');
   if (input) input.value = '';
-  
+
   updateRoomUI();
   showToast(`Room ${oldCode} deleted.`, '🗑️');
 }
@@ -1302,7 +1351,7 @@ function showLikedSummary() {
       const emoji = CUISINE_EMOJI[r.cuisine] || '🍴';
       const isMatched = matchedRestaurantIds.includes(r.id);
       const matchBadge = isMatched ? `<span style="background:rgba(255,107,0,0.15);border:1px solid var(--border-orange);color:var(--orange);font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600;margin-left:8px;white-space:nowrap;display:inline-block;line-height:1.2;">🔥 Group Match</span>` : '';
-      
+
       return `
         <div class="liked-restaurant-item" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:rgba(255,255,255,0.03);border:1px solid var(--border-glass);border-radius:var(--radius-lg);gap:12px;transition:var(--transition);text-align:left;margin-bottom:8px;">
           <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;">
@@ -1364,6 +1413,8 @@ function closeMatch() {
 let dashInited = false;
 let queueList = [];
 let currentOwnerRestaurant = null;
+let currentMenuData = [];
+let currentMenuCategoryIndex = 0;
 
 async function initDashboard() {
   const container = document.getElementById('dashboard');
@@ -1378,7 +1429,11 @@ async function initDashboard() {
   try {
     // 1. Get Claimed Restaurant Profile
     currentOwnerRestaurant = await API.getOwnerRestaurant();
-    
+
+    // Deep copy menu data for draft edits
+    currentMenuData = JSON.parse(JSON.stringify(currentOwnerRestaurant.menu || []));
+    currentMenuCategoryIndex = 0;
+
     // Update dashboard header
     const managingTitle = document.getElementById('dash-managing-title');
     const managingInfo = document.getElementById('dash-managing-info');
@@ -1433,8 +1488,9 @@ function switchDashPanel(panelId, el) {
   const panel = document.getElementById(panelId);
   if (panel) panel.classList.add('active');
   if (el) el.classList.add('active');
-  
+
   if (panelId === 'dash-promos') refreshDashboardPromos();
+  if (panelId === 'dash-menu') renderDashMenuEditor();
   if (panelId === 'dash-account') {
     const currentUsername = sessionStorage.getItem('tm_username') || 'owner@romulo.com';
     const currentUsernameEl = document.getElementById('account-current-username');
@@ -1447,22 +1503,22 @@ function switchDashPanel(panelId, el) {
 function populateProfileForm(r) {
   const panel = document.getElementById('dash-profile');
   if (!panel) return;
-  
+
   const nameInput = panel.querySelector('input[placeholder="Restaurant name"]');
   if (nameInput) nameInput.value = r.name;
-  
+
   const cuisineInput = panel.querySelector('input[placeholder="e.g. Italian, Filipino…"]');
   if (cuisineInput) cuisineInput.value = r.cuisine;
-  
+
   const addressInput = panel.querySelector('input[placeholder="Full address on Tomas Morato Ave"]');
   if (addressInput) addressInput.value = r.address;
-  
+
   const phoneInput = panel.querySelector('input[placeholder="+63 2 XXXX XXXX"]');
   if (phoneInput) phoneInput.value = r.phone;
-  
+
   const hoursInput = panel.querySelector('input[placeholder="e.g. 11:00 AM – 10:00 PM"]');
   if (hoursInput) hoursInput.value = `${r.hours.open} – ${r.hours.close}`;
-  
+
   const priceSelect = panel.querySelector('select');
   if (priceSelect) priceSelect.selectedIndex = r.priceRange - 1;
 
@@ -1488,7 +1544,7 @@ function populateProfileForm(r) {
 
 async function saveOwnerProfile() {
   if (!currentOwnerRestaurant) return;
-  
+
   const panel = document.getElementById('dash-profile');
   const name = panel.querySelector('input[placeholder="Restaurant name"]')?.value;
   const cuisine = panel.querySelector('input[placeholder="e.g. Italian, Filipino…"]')?.value;
@@ -1517,7 +1573,7 @@ async function saveOwnerProfile() {
   checkboxes.forEach(cb => {
     if (!cb.checked) return;
     const labelText = cb.parentNode.textContent.trim().toLowerCase();
-    
+
     // Match with AMBIANCE keys
     Object.keys(AMBIANCE_LABELS).forEach(k => {
       const matchText = AMBIANCE_LABELS[k].toLowerCase().split(' ').slice(1).join(' ');
@@ -1547,7 +1603,7 @@ async function saveOwnerProfile() {
     await API.updateOwnerRestaurant(updateData);
     showToast('Profile saved successfully!', '✅');
     currentOwnerRestaurant = { ...currentOwnerRestaurant, ...updateData };
-    
+
     // Update dashboard header
     const managingTitle = document.getElementById('dash-managing-title');
     const managingInfo = document.getElementById('dash-managing-info');
@@ -1563,10 +1619,10 @@ async function saveOwnerProfile() {
 async function refreshDashboardPromos() {
   const listContainer = document.querySelector('#dash-promos div:nth-of-type(3) div');
   if (!listContainer) return;
-  
+
   try {
     const promos = await API.getOwnerPromos();
-    
+
     // Live preview
     const preview = document.getElementById('promo-preview');
     if (preview) {
@@ -1612,24 +1668,24 @@ async function publishPromo() {
   const titleInput = document.getElementById('promo-title');
   const descInput = document.getElementById('promo-desc');
   const validInput = document.getElementById('promo-valid');
-  
+
   const title = titleInput?.value?.trim();
   const desc = descInput?.value?.trim();
   const valid = validInput?.value?.trim() || 'Today only';
-  
+
   if (!title || !desc) { showToast('Please fill in all promo details!', '⚠️'); return; }
 
   try {
     showToast('Publishing...', '🔥');
     await API.createOwnerPromo({ title, description: desc, valid });
-    
+
     if (titleInput) titleInput.value = '';
     if (descInput) descInput.value = '';
     if (validInput) validInput.value = '';
 
     showToast(`Promo "${title}" published!`, '🔥');
     await refreshDashboardPromos();
-    
+
     // Update active promo banner on overview page
     const promoBanner = document.querySelector('#dash-overview .daily-special-banner');
     if (promoBanner) {
@@ -1731,4 +1787,202 @@ function quickFilter(filter) {
   else if (filter === 'study') listFilters.ambiance = 'study-friendly';
   else if (filter === 'halal') listFilters.dietary = 'halal';
   navigateTo('restaurant-list');
+}
+
+/* ==================== OWNER DASHBOARD: MENU EDITOR ==================== */
+function renderDashMenuEditor() {
+  const catContainer = document.getElementById('dash-menu-categories');
+  const itemsContainer = document.getElementById('dash-menu-items-list');
+  const addItemCatLabel = document.getElementById('add-item-category-name');
+
+  if (!catContainer || !itemsContainer || !currentMenuData) return;
+
+  // 1. Render category tab buttons
+  if (currentMenuData.length === 0) {
+    catContainer.innerHTML = `<span style="font-size:13px;color:var(--gray-500);">No categories. Create one to begin.</span>`;
+    itemsContainer.innerHTML = `<div style="text-align:center;padding:40px;color:var(--gray-500);">Create a category first to add menu items.</div>`;
+    if (addItemCatLabel) addItemCatLabel.textContent = '(Create a category)';
+    return;
+  }
+
+  // Bound check Category Index
+  if (currentMenuCategoryIndex >= currentMenuData.length) {
+    currentMenuCategoryIndex = 0;
+  }
+
+  catContainer.innerHTML = currentMenuData.map((cat, idx) => `
+    <button class="menu-cat-btn ${idx === currentMenuCategoryIndex ? 'active' : ''}" onclick="switchMenuCategory(${idx})">
+      ${cat.category}
+    </button>
+  `).join('');
+
+  const activeCat = currentMenuData[currentMenuCategoryIndex];
+  if (addItemCatLabel) addItemCatLabel.textContent = `"${activeCat.category}"`;
+
+  // 2. Render items in active category
+  if (!activeCat.items || activeCat.items.length === 0) {
+    itemsContainer.innerHTML = `
+      <div style="text-align:center;padding:40px;border:1px dashed var(--border-glass);border-radius:var(--radius-lg);color:var(--gray-500);">
+        No items in this category yet. Add one below!
+      </div>
+    `;
+    return;
+  }
+
+  itemsContainer.innerHTML = activeCat.items.map((item, idx) => `
+    <div class="dash-menu-item-row">
+      <div class="form-group" style="flex: 2; min-width: 180px;">
+        <label class="form-label" style="font-size: 10px; margin-bottom: 4px;">Item Name</label>
+        <input type="text" class="form-input" value="${item.name.replace(/"/g, '&quot;')}" oninput="changeMenuItemValue(${idx}, 'name', this.value)" placeholder="Item name..." required />
+      </div>
+      <div class="form-group" style="flex: 0.8; min-width: 90px;">
+        <label class="form-label" style="font-size: 10px; margin-bottom: 4px;">Price (₱)</label>
+        <input type="number" class="form-input" value="${item.price}" oninput="changeMenuItemValue(${idx}, 'price', this.value)" placeholder="Price..." min="0" required />
+      </div>
+      <div class="form-group" style="flex: 3; min-width: 200px;">
+        <label class="form-label" style="font-size: 10px; margin-bottom: 4px;">Description</label>
+        <input type="text" class="form-input" value="${(item.description || '').replace(/"/g, '&quot;')}" oninput="changeMenuItemValue(${idx}, 'description', this.value)" placeholder="Item description..." />
+      </div>
+      <div class="dash-menu-item-actions">
+        <button class="btn-delete-item" onclick="deleteMenuItem(${idx})">
+          🗑️ Delete
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function switchMenuCategory(idx) {
+  currentMenuCategoryIndex = idx;
+  renderDashMenuEditor();
+}
+
+function changeMenuItemValue(itemIdx, field, value) {
+  if (!currentMenuData || !currentMenuData[currentMenuCategoryIndex]) return;
+  const items = currentMenuData[currentMenuCategoryIndex].items;
+  if (!items || !items[itemIdx]) return;
+
+  if (field === 'price') {
+    items[itemIdx][field] = parseFloat(value) || 0;
+  } else {
+    items[itemIdx][field] = value;
+  }
+}
+
+function deleteMenuItem(itemIdx) {
+  if (!currentMenuData || !currentMenuData[currentMenuCategoryIndex]) return;
+  const items = currentMenuData[currentMenuCategoryIndex].items;
+  if (!items || !items[itemIdx]) return;
+
+  const itemName = items[itemIdx].name || 'this item';
+  if (confirm(`Remove "${itemName}" from the menu?`)) {
+    items.splice(itemIdx, 1);
+    renderDashMenuEditor();
+    showToast(`Removed "${itemName}"`, '🗑️');
+  }
+}
+
+function addNewMenuItem() {
+  const nameInput = document.getElementById('new-item-name');
+  const priceInput = document.getElementById('new-item-price');
+  const descInput = document.getElementById('new-item-desc');
+
+  const name = nameInput?.value?.trim();
+  const price = parseFloat(priceInput?.value) || 0;
+  const description = descInput?.value?.trim() || '';
+
+  if (!name) {
+    showToast('Item Name is required!', '⚠️');
+    return;
+  }
+
+  if (!currentMenuData || currentMenuData.length === 0) {
+    showToast('Create a category first!', '⚠️');
+    return;
+  }
+
+  const activeCat = currentMenuData[currentMenuCategoryIndex];
+  if (!activeCat.items) activeCat.items = [];
+
+  activeCat.items.push({ name, price, description });
+
+  // Clear inputs
+  if (nameInput) nameInput.value = '';
+  if (priceInput) priceInput.value = '';
+  if (descInput) descInput.value = '';
+
+  renderDashMenuEditor();
+  showToast(`Added "${name}" to ${activeCat.category}`, '➕');
+}
+
+function addNewCategoryPrompt() {
+  const name = prompt('Enter name for the new menu category (e.g. Starters, Mains, Special Drinks):');
+  if (!name || !name.trim()) return;
+
+  const cleanName = name.trim();
+
+  // Check for duplicates
+  const exists = currentMenuData.some(c => c.category.toLowerCase() === cleanName.toLowerCase());
+  if (exists) {
+    showToast(`Category "${cleanName}" already exists!`, '⚠️');
+    return;
+  }
+
+  currentMenuData.push({ category: cleanName, items: [] });
+  currentMenuCategoryIndex = currentMenuData.length - 1;
+
+  renderDashMenuEditor();
+  showToast(`Created category "${cleanName}"`, '➕');
+}
+
+function deleteCurrentCategory() {
+  if (!currentMenuData || currentMenuData.length === 0) return;
+  const catName = currentMenuData[currentMenuCategoryIndex].category;
+
+  if (confirm(`Are you sure you want to delete the entire category "${catName}" and all its items?`)) {
+    currentMenuData.splice(currentMenuCategoryIndex, 1);
+    currentMenuCategoryIndex = 0;
+    renderDashMenuEditor();
+    showToast(`Deleted category "${catName}"`, '🗑️');
+  }
+}
+
+async function saveOwnerMenu() {
+  if (!currentOwnerRestaurant) return;
+
+  // Validate the menu inputs (simple name check)
+  let isValid = true;
+  currentMenuData.forEach(cat => {
+    if (cat.items) {
+      cat.items.forEach(item => {
+        if (!item.name || !item.name.trim()) {
+          isValid = false;
+        }
+      });
+    }
+  });
+
+  if (!isValid) {
+    showToast('All menu items must have a name!', '❌');
+    return;
+  }
+
+  try {
+    showToast('Saving menu changes...', '💾');
+    // Save to server/mock state
+    await API.updateOwnerRestaurant({ menu: currentMenuData });
+
+    // Update local cached copy of owner restaurant
+    currentOwnerRestaurant.menu = JSON.parse(JSON.stringify(currentMenuData));
+
+    showToast('Menu saved successfully!', '✅');
+    renderDashMenuEditor();
+
+    // Refresh lists and maps to reflect changes immediately
+    if (document.getElementById('restaurant-list').classList.contains('active')) {
+      renderRestaurantList();
+    }
+  } catch (e) {
+    showToast(e.message, '❌');
+  }
 }

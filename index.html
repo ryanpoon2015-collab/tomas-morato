@@ -50,6 +50,7 @@
         <div class="nav-link" data-page="restaurant-list" id="nav-list">🍽️ Restaurant List</div>
         <div class="nav-link" data-page="food-wheel" id="nav-wheel">🎡 Food Wheel</div>
         <div class="nav-link" data-page="food-swipe" id="nav-swipe">💘 Food Swipe</div>
+        <div class="nav-link" data-page="about-us" id="nav-about">ℹ️ About Us</div>
       </div>
 
       <div class="nav-right">
@@ -377,6 +378,126 @@
     </div>
   </section>
 
+  <!-- ==================== ABOUT US PAGE ==================== -->
+  <section id="about-us" class="page-section">
+    <div class="section-header">
+      <div class="section-title-group">
+        <div class="section-eyebrow">Discover Our Story</div>
+        <h2 class="section-title"><span class="highlight">About</span> Us</h2>
+      </div>
+      <div style="font-size:14px;color:var(--gray-300);">Learn about the platform & get in touch with our team</div>
+    </div>
+
+    <div class="about-layout">
+      <!-- Story Column -->
+      <div class="about-story-panel">
+        <div class="about-card hero-story">
+          <h3>Welcome to Tomas Morato Avenue</h3>
+          <p>
+            Tomas Morato Avenue is the culinary beating heart of Quezon City, Philippines. Spanning blocks of high-energy bistros, cozy third-wave cafes, date-night spots, and after-hours restobars, this iconic food district is where flavor meets culture.
+          </p>
+          <p style="margin-top: 12px;">
+            <strong>Tomas Morato Discovery</strong> was built to help food lovers navigate this rich gastronomic ecosystem. Whether you are seeking a specific ambiance, dietary preference, or just feeling completely indecisive, we've got you covered.
+          </p>
+        </div>
+
+        <div class="about-pillars-grid">
+          <div class="pillar-card">
+            <div class="pillar-icon">🗺️</div>
+            <h4>Food Radar</h4>
+            <p>Interactive location-based map showing real-time restaurants within your custom search radius.</p>
+          </div>
+          <div class="pillar-card">
+            <div class="pillar-icon">🎡</div>
+            <h4>Decision Tools</h4>
+            <p>Feeling indecisive? Spin the Food Wheel or swipe through places with friends in real-time rooms.</p>
+          </div>
+          <div class="pillar-card">
+            <div class="pillar-icon">🏪</div>
+            <h4>Live Updates</h4>
+            <p>See current restaurant wait-times and active daily promos directly reported by verified owners.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Contact Column -->
+      <div class="about-contact-panel">
+        <div class="contact-card">
+          <div id="contact-form-container">
+            <h3>✉️ Contact Us</h3>
+            <p style="font-size: 13px; color: var(--gray-300); margin-bottom: 20px;">
+              Have questions, feedback, or a restaurant listing you'd like to claim or add? Shoot us a message!
+            </p>
+
+            <form id="about-contact-form" onsubmit="event.preventDefault(); handleContactSubmit();">
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label" for="contact-name">Name</label>
+                  <input type="text" class="form-input" id="contact-name" placeholder="Your name..." required />
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label" for="contact-email">Email Address</label>
+                  <input type="email" class="form-input" id="contact-email" placeholder="Your email..." required />
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label" for="contact-subject">Subject</label>
+                  <input type="text" class="form-input" id="contact-subject" placeholder="What is this about?..." required />
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label" for="contact-message">Message</label>
+                  <textarea class="form-input" id="contact-message" rows="4" placeholder="Write your message here..." required></textarea>
+                </div>
+              </div>
+
+              <button type="submit" class="btn-publish" style="width: 100%; margin-top: 10px;" id="contact-submit-btn">
+                🚀 Send Message
+              </button>
+            </form>
+          </div>
+
+          <!-- Success State -->
+          <div class="contact-success-state" id="contact-success" style="display: none;">
+            <div class="success-icon">✨</div>
+            <h4>Thank You!</h4>
+            <p style="font-size: 14px; color: var(--gray-300); line-height: 1.6; margin: 10px 0 20px 0;">Your message has been sent successfully. Our team will review it and get back to you shortly.</p>
+            <button class="btn-publish" onclick="resetContactForm()" style="margin-top: 0; padding: 10px 24px; font-size:13px;">Send Another Message</button>
+          </div>
+        </div>
+        
+        <!-- Contact Details -->
+        <div class="contact-details-card">
+          <div class="detail-item">
+            <span class="detail-icon">📍</span>
+            <div>
+              <strong>Address</strong>
+              <span>Tomas Morato Ave, Diliman, Quezon City, Metro Manila</span>
+            </div>
+          </div>
+          <div class="detail-item">
+            <span class="detail-icon">📞</span>
+            <div>
+              <strong>Phone</strong>
+              <span>+63 (2) 8123 4567</span>
+            </div>
+          </div>
+          <div class="detail-item">
+            <span class="detail-icon">✉️</span>
+            <div>
+              <strong>Email</strong>
+              <span>hello@tomasmorato.com</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- ==================== OWNER DASHBOARD ==================== -->
   <section id="dashboard" class="page-section">
     <div class="section-header" style="padding-bottom:0;">
@@ -394,6 +515,9 @@
         </div>
         <div class="dash-nav-item" onclick="switchDashPanel('dash-promos', this)">
           <span class="dash-nav-icon">🔥</span> Daily Specials
+        </div>
+        <div class="dash-nav-item" onclick="switchDashPanel('dash-menu', this)">
+          <span class="dash-nav-icon">🍽️</span> Menu Editor
         </div>
         <div class="dash-nav-item" onclick="switchDashPanel('dash-profile', this)">
           <span class="dash-nav-icon">✏️</span> Edit Profile
@@ -530,6 +654,64 @@
                 <span
                   style="padding:4px 12px;background:rgba(255,107,0,0.15);border:1px solid var(--border-orange);border-radius:20px;font-size:12px;color:var(--orange);">SCHEDULED</span>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Menu Editor Panel -->
+        <div class="dash-panel" id="dash-menu">
+          <div class="promo-form-card">
+            <h3>🍽️ Edit Restaurant Menu</h3>
+            <p style="font-size:13px;color:var(--gray-300);margin-bottom:20px;line-height:1.7;">
+              Manage your food and drink categories, items, prices, and descriptions. Changes are saved instantly to your public profile.
+            </p>
+
+            <!-- Category Tabs Row -->
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:20px; border-bottom: 1px solid var(--border-glass); padding-bottom: 16px;">
+              <div class="menu-categories" id="dash-menu-categories" style="margin-bottom: 0;">
+                <!-- Category buttons rendered dynamically -->
+              </div>
+              <button class="btn-publish" onclick="addNewCategoryPrompt()" style="margin-top:0; padding:8px 16px; font-size:12px; border:1px dashed var(--border-orange); background:transparent; color:var(--orange);">
+                ➕ Add Category
+              </button>
+            </div>
+
+            <!-- Items List -->
+            <div id="dash-menu-items-list" style="display:flex; flex-direction:column; gap:16px; margin-bottom:24px;">
+              <!-- Dynamic item rows with edit/delete inputs -->
+            </div>
+
+            <!-- Add Item Row -->
+            <div style="background:rgba(255,255,255,0.02); border:1px dashed var(--border-glass); border-radius:var(--radius-lg); padding:20px; margin-bottom:24px;">
+              <h4 style="font-size:14px; font-weight:700; margin-bottom:12px; color:var(--orange);">➕ Add New Item to <span id="add-item-category-name">this category</span></h4>
+              <div class="form-row">
+                <div class="form-group" style="flex:2;">
+                  <label class="form-label">Item Name</label>
+                  <input type="text" class="form-input" id="new-item-name" placeholder="e.g. Sizzling Sisig, Iced Latte..." />
+                </div>
+                <div class="form-group" style="flex:1;">
+                  <label class="form-label">Price (₱)</label>
+                  <input type="number" class="form-input" id="new-item-price" placeholder="0" min="0" />
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">Description</label>
+                  <input type="text" class="form-input" id="new-item-desc" placeholder="e.g. Crispy pork head with onions and chili..." />
+                </div>
+              </div>
+              <button class="btn-publish" onclick="addNewMenuItem()" style="margin-top:6px; padding:10px 20px; font-size:13px;">
+                Add Item
+              </button>
+            </div>
+
+            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+              <button class="btn-publish" onclick="saveOwnerMenu()" style="margin-top:0;">
+                💾 Save Menu Changes
+              </button>
+              <button class="btn-room-outline" onclick="deleteCurrentCategory()" style="background:transparent; border:none; color:#ef4444; cursor:pointer; font-weight:600; font-size:13px; margin:0; padding:6px 12px;">
+                🗑️ Delete Current Category
+              </button>
             </div>
           </div>
         </div>
@@ -736,7 +918,7 @@
   <!-- App Logic -->
   <script src="app.js"></script>
   <!-- Morato AI Chatbot (Ollama-powered) -->
-  <script src="api-keys.js"></script>
+  <script src="api-key.js"></script>
   <script src="chatbot.js"></script>
 
   <script>

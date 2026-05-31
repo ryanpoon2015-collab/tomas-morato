@@ -6,12 +6,22 @@
 const CHATBOT = (() => {
 
   // ── Config ──────────────────────────────────────────────
-  // GEMINI_API_KEY is now loaded from api-keys.js
-  const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:streamGenerateContent?key=${GEMINI_API_KEY}`;
+  const getFallbackApiKey = () => {
+    return typeof GEMINI_API_KEY !== 'undefined' ? GEMINI_API_KEY : '';
+  };
+
+  const getActiveKey = () => {
+    return localStorage.getItem('tm_gemini_api_key') || getFallbackApiKey();
+  };
+
+  const isAccessToken = (key) => {
+    return key.startsWith('ya29.');
+  };
 
   // ── State ────────────────────────────────────────────────
   let isOpen = false;
   let isTyping = false;
+  let isSettingsOpen = false;
   let conversationHistory = [];
 
   // ── Build system prompt from live RESTAURANTS data ───────
@@ -72,6 +82,17 @@ Guidelines:
     // Add user message to history
     conversationHistory.push({ role: 'user', parts: [{ text: userMessage }] });
 
+    const activeKey = getActiveKey();
+    let url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:streamGenerateContent';
+    const headers = { 'Content-Type': 'application/json' };
+
+    if (isAccessToken(activeKey)) {
+      headers['Authorization'] = `Bearer ${activeKey}`;
+      url += '?alt=sse';
+    } else {
+      url += `?key=${activeKey}&alt=sse`;
+    }
+
     const body = {
       system_instruction: {
         parts: { text: buildSystemPrompt() }
@@ -80,9 +101,9 @@ Guidelines:
     };
 
     try {
-      const response = await fetch(GEMINI_URL + '&alt=sse', {
+      const response = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: headers,
         body: JSON.stringify(body),
       });
 
@@ -246,10 +267,33 @@ Guidelines:
 
         // Show a friendly error
         let errMsg = `⚠️ Something went wrong: ${err.message}. Please try again.`;
-        if (err.message.includes('API_KEY_INVALID') || err.message.includes('API key not valid')) {
-          errMsg = `⚠️ Invalid API Key. Please insert your Gemini API Key in the <code>chatbot.js</code> configuration.`;
-        } else if (GEMINI_API_KEY === 'PUT_YOUR_GEMINI_API_KEY_HERE') {
-          errMsg = `⚠️ Please set your <strong>Gemini API Key</strong> in <code>chatbot.js</code> to use the assistant!`;
+        
+        const hasUserKey = !!localStorage.getItem('tm_gemini_api_key');
+        const fallbackKey = getFallbackApiKey();
+        
+        const isAuthError = err.message.includes('401') || err.message.includes('403') ||
+          err.message.includes('API_KEY_INVALID') || err.message.includes('API key not valid') ||
+          err.message.includes('UNAUTHENTICATED') || err.message.includes('PERMISSION_DENIED') ||
+          err.message.includes('unregistered callers');
+
+        const isAdmin = sessionStorage.getItem('tm_user_role') === 'admin';
+
+        if (isAuthError) {
+          if (isAdmin) {
+            if (hasUserKey) {
+              errMsg = `⚠️ Your API key is invalid or unauthorized (${err.message.includes('403') ? 'Error 403' : 'Error 401'}). Please verify and update your key.<br><button class="chatbot-error-btn" onclick="CHATBOT.toggleSettings()">Update API Key</button>`;
+            } else {
+              errMsg = `⚠️ API access denied. The current key in <code>api-keys.js</code> is not valid for the Gemini API.<br>Please get a free key from <strong>Google AI Studio</strong> (starts with <code>AIzaSy</code> or <code>AQ.</code>) and configure it below.<br><button class="chatbot-error-btn" onclick="CHATBOT.toggleSettings()">Configure API Key →</button>`;
+            }
+          } else {
+            errMsg = `⚠️ The AI Assistant is currently unavailable due to a configuration issue. Please try again later.`;
+          }
+        } else if (fallbackKey === 'PUT_YOUR_GEMINI_API_KEY_HERE' && !hasUserKey) {
+          if (isAdmin) {
+            errMsg = `⚠️ Please configure your <strong>Gemini API Key</strong> to use the assistant!<br><button class="chatbot-error-btn" onclick="CHATBOT.toggleSettings()">Set API Key</button>`;
+          } else {
+            errMsg = `⚠️ The AI Assistant is not configured yet.`;
+          }
         }
 
         appendMessage('assistant', errMsg);
@@ -268,6 +312,14 @@ Guidelines:
     const btn = getEl('chatbot-fab');
     if (panel) { panel.classList.add('chatbot-panel--open'); panel.setAttribute('aria-hidden', 'false'); }
     if (btn) btn.classList.add('chatbot-fab--open');
+
+    // Hide settings button for non-admins
+    const settingsBtn = getEl('chatbot-settings-btn');
+    if (settingsBtn) {
+      const role = sessionStorage.getItem('tm_user_role');
+      settingsBtn.style.display = (role === 'admin') ? 'inline-flex' : 'none';
+    }
+
     setTimeout(() => { const input = getEl('chatbot-input'); if (input) input.focus(); }, 300);
   }
 
@@ -361,6 +413,12 @@ Guidelines:
             </div>
           </div>
           <div class="chatbot-header__actions">
+            <button id="chatbot-settings-btn" class="chatbot-icon-btn" onclick="CHATBOT.toggleSettings()" title="API Settings" aria-label="API Settings">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+              </svg>
+            </button>
             <button class="chatbot-icon-btn" onclick="CHATBOT.clearChat()" title="Clear conversation" aria-label="Clear chat">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="3 6 5 6 21 6"/>
@@ -375,6 +433,24 @@ Guidelines:
                 <line x1="6" y1="6" x2="18" y2="18"/>
               </svg>
             </button>
+          </div>
+        </div>
+
+        <!-- Settings Overlay -->
+        <div id="chatbot-settings" class="chatbot-settings-overlay" style="display: none;">
+          <h3>⚙️ Morato AI Settings</h3>
+          <p>Configure a custom Gemini API key or access token. Get a key at <a href="https://aistudio.google.com/" target="_blank" style="color: var(--orange); text-decoration: underline;">Google AI Studio</a>.</p>
+          <div class="chatbot-settings-field">
+            <label for="chatbot-key-input">API Key / Access Token</label>
+            <div class="chatbot-settings-input-container">
+              <input type="password" id="chatbot-key-input" class="chatbot-input" style="width:100%;" placeholder="AIzaSy... or AQ...." />
+              <button type="button" id="chatbot-key-toggle" class="chatbot-settings-toggle-btn" onclick="CHATBOT.toggleKeyVisibility()">👁️</button>
+            </div>
+          </div>
+          <div id="chatbot-settings-msg" class="chatbot-settings-msg" style="display: none;"></div>
+          <div class="chatbot-settings-actions">
+            <button type="button" class="chatbot-settings-btn chatbot-settings-btn--cancel" onclick="CHATBOT.toggleSettings()">Cancel</button>
+            <button type="button" class="chatbot-settings-btn chatbot-settings-btn--save" onclick="CHATBOT.saveSettings()">Save Key</button>
           </div>
         </div>
 
@@ -441,8 +517,97 @@ Guidelines:
     });
   }
 
+  // ── Settings Panel Logic ──────────────────────────────────
+  function toggleSettings() {
+    const role = sessionStorage.getItem('tm_user_role');
+    if (role !== 'admin') {
+      if (typeof showToast === 'function') {
+        showToast('Only admins can access API settings.', '🔒');
+      }
+      return;
+    }
+
+    const settingsPanel = getEl('chatbot-settings');
+    if (!settingsPanel) return;
+
+    isSettingsOpen = !isSettingsOpen;
+    if (isSettingsOpen) {
+      settingsPanel.style.display = 'flex';
+      // Load current key into input
+      const keyInput = getEl('chatbot-key-input');
+      if (keyInput) {
+        keyInput.value = localStorage.getItem('tm_gemini_api_key') || '';
+      }
+      const msg = getEl('chatbot-settings-msg');
+      if (msg) {
+        msg.style.display = 'none';
+        msg.className = 'chatbot-settings-msg';
+        msg.innerHTML = '';
+      }
+    } else {
+      settingsPanel.style.display = 'none';
+    }
+  }
+
+  function saveSettings() {
+    const keyInput = getEl('chatbot-key-input');
+    const msg = getEl('chatbot-settings-msg');
+    if (!keyInput || !msg) return;
+
+    const value = keyInput.value.trim();
+    
+    // Validate key
+    if (!value) {
+      // Allow clearing the key to use default
+      localStorage.removeItem('tm_gemini_api_key');
+      msg.style.display = 'block';
+      msg.className = 'chatbot-settings-msg chatbot-settings-msg--success';
+      msg.innerHTML = '✨ Settings saved. Using default API Key.';
+      setTimeout(() => toggleSettings(), 1500);
+      return;
+    }
+
+    if (!value.startsWith('AIzaSy') && !value.startsWith('AQ.')) {
+      msg.style.display = 'block';
+      msg.className = 'chatbot-settings-msg chatbot-settings-msg--error';
+      msg.innerHTML = '⚠️ Warning: Keys usually start with "AIzaSy" or "AQ."';
+    } else {
+      msg.style.display = 'block';
+      msg.className = 'chatbot-settings-msg chatbot-settings-msg--success';
+      msg.innerHTML = '✨ Key saved successfully!';
+    }
+
+    localStorage.setItem('tm_gemini_api_key', value);
+    setTimeout(() => toggleSettings(), 1200);
+  }
+
+  function toggleKeyVisibility() {
+    const keyInput = getEl('chatbot-key-input');
+    const toggleBtn = getEl('chatbot-key-toggle');
+    if (!keyInput || !toggleBtn) return;
+
+    if (keyInput.type === 'password') {
+      keyInput.type = 'text';
+      toggleBtn.textContent = '🙈';
+    } else {
+      keyInput.type = 'password';
+      toggleBtn.textContent = '👁️';
+    }
+  }
+
   // ── Public API ────────────────────────────────────────────
-  return { init, toggle, open, close, clearChat, sendMessage, useSuggestion };
+  return { 
+    init, 
+    toggle, 
+    open, 
+    close, 
+    clearChat, 
+    sendMessage, 
+    useSuggestion,
+    toggleSettings,
+    saveSettings,
+    toggleKeyVisibility
+  };
 
 })();
 

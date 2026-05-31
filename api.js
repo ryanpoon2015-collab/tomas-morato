@@ -446,6 +446,12 @@ const API = (() => {
       }
     },
 
+    // Allow Admin to switch the active restaurant
+    setAdminMockRestaurantId: (id) => {
+      mockClaimedRestaurantId = parseInt(id);
+      sessionStorage.setItem('tm_claimed_restaurant_id', mockClaimedRestaurantId.toString());
+    },
+
     // 12. Get Claimed Restaurant Profile
     getOwnerRestaurant: async () => {
       if (CONFIG.API_MODE === 'live') {

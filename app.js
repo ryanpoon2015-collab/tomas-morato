@@ -1438,7 +1438,15 @@ async function initDashboard() {
     const managingTitle = document.getElementById('dash-managing-title');
     const managingInfo = document.getElementById('dash-managing-info');
     if (managingTitle && managingInfo && currentOwnerRestaurant) {
-      managingTitle.textContent = `🏪 Managing: ${currentOwnerRestaurant.name}`;
+      const role = sessionStorage.getItem('tm_user_role');
+      if (role === 'admin') {
+        const allRestaurants = await API.getRestaurants();
+        managingTitle.innerHTML = `🏪 Managing: <select id="admin-restaurant-select" onchange="changeAdminRestaurant(this.value)" style="background:#000000; color:var(--white); border:1px solid var(--border-glass); border-radius:4px; padding:4px 8px; font-size:14px; margin-left:8px; cursor:pointer;">
+          ${allRestaurants.map(r => `<option value="${r.id}" style="background:#000000; color:var(--white);" ${r.id === currentOwnerRestaurant.id ? 'selected' : ''}>${r.name}</option>`).join('')}
+        </select>`;
+      } else {
+        managingTitle.textContent = `🏪 Managing: ${currentOwnerRestaurant.name}`;
+      }
       managingInfo.textContent = `${currentOwnerRestaurant.address} | Phone: ${currentOwnerRestaurant.phone}`;
     }
 
@@ -1470,6 +1478,11 @@ async function initDashboard() {
   } finally {
     overlay.remove();
   }
+}
+
+async function changeAdminRestaurant(id) {
+  API.setAdminMockRestaurantId(id);
+  await initDashboard();
 }
 
 function renderDashboardWaitTime(r) {
@@ -1608,7 +1621,16 @@ async function saveOwnerProfile() {
     const managingTitle = document.getElementById('dash-managing-title');
     const managingInfo = document.getElementById('dash-managing-info');
     if (managingTitle && managingInfo) {
-      managingTitle.textContent = `🏪 Managing: ${name}`;
+      const role = sessionStorage.getItem('tm_user_role');
+      if (role === 'admin') {
+        // Recreate dropdown with updated name
+        const allRestaurants = await API.getRestaurants();
+        managingTitle.innerHTML = `🏪 Managing: <select id="admin-restaurant-select" onchange="changeAdminRestaurant(this.value)" style="background:#000000; color:var(--white); border:1px solid var(--border-glass); border-radius:4px; padding:4px 8px; font-size:14px; margin-left:8px; cursor:pointer;">
+          ${allRestaurants.map(r => `<option value="${r.id}" style="background:#000000; color:var(--white);" ${r.id === currentOwnerRestaurant.id ? 'selected' : ''}>${r.name}</option>`).join('')}
+        </select>`;
+      } else {
+        managingTitle.textContent = `🏪 Managing: ${name}`;
+      }
       managingInfo.textContent = `${address} | Phone: ${phone}`;
     }
   } catch (e) {

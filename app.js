@@ -7,7 +7,24 @@
 /* ==================== ROUTER ==================== */
 const PAGES = ['home', 'food-radar', 'restaurant-list', 'food-wheel', 'food-swipe', 'dashboard'];
 
+function toggleMobileNav() {
+  const wrapper = document.getElementById('nav-menu-wrapper');
+  const btn = document.getElementById('mobile-nav-toggle');
+  if (wrapper && btn) {
+    wrapper.classList.toggle('open');
+    btn.classList.toggle('open');
+  }
+}
+
 function navigateTo(pageId) {
+  // Close mobile nav on transition
+  const wrapper = document.getElementById('nav-menu-wrapper');
+  const btn = document.getElementById('mobile-nav-toggle');
+  if (wrapper && btn) {
+    wrapper.classList.remove('open');
+    btn.classList.remove('open');
+  }
+
   if (pageId === 'dashboard') {
     const token = sessionStorage.getItem(CONFIG.AUTH_TOKEN_KEY);
     if (!token) {
@@ -175,7 +192,10 @@ async function claimListing(id) {
 }
 
 /* ==================== FOOD RADAR ==================== */
-let map = null, radiusCircle = null, radarMarkers = [], radarInited = false, radarFilters = { openNow: false, cuisine: null };
+let map = null, radiusCircle = null, radarMarkers = [], radarInited = false;
+let radarFilters = { openNow: false, cuisine: null, ambiance: [], dietary: [] };
+let userLocation = null;  // { lat, lng } — user's real location or null
+let userLocationMarker = null;
 
 function initFoodRadar() {
   if (radarInited) return;
@@ -199,13 +219,8 @@ function initFoodRadar() {
 
   L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-  // User center marker
-  const centerIcon = L.divIcon({
-    className: '',
-    html: `<div style="width:20px;height:20px;background:#FF6B00;border-radius:50%;border:3px solid white;box-shadow:0 0 20px rgba(255,107,0,0.7);"></div>`,
-    iconAnchor: [10, 10]
-  });
-  L.marker([center.lat, center.lng], { icon: centerIcon }).addTo(map);
+  // Default center marker (Tomas Morato)
+  placeUserMarker(center.lat, center.lng);
 
   // Draw initial radius
   updateRadarRadius(1500);
@@ -220,21 +235,134 @@ function initFoodRadar() {
     });
   }
 
-  // Filter chips
+  // Filter chips — support all tag types
   document.querySelectorAll('.map-filter-chip').forEach(chip => {
     chip.addEventListener('click', () => {
       const filter = chip.dataset.filter;
       chip.classList.toggle('active');
+
       if (filter === 'open-now') {
         radarFilters.openNow = chip.classList.contains('active');
+      } else if (filter === 'date-night') {
+        toggleRadarArrayFilter('ambiance', 'date-night', chip.classList.contains('active'));
+      } else if (filter === 'vegan') {
+        toggleRadarArrayFilter('dietary', 'vegan', chip.classList.contains('active'));
+      } else if (filter === 'halal') {
+        toggleRadarArrayFilter('dietary', 'halal', chip.classList.contains('active'));
       }
+
       updateRadarRadius(parseFloat(slider?.value || 1.5) * 1000);
     });
   });
+
+  // Ask for user location
+  requestUserLocation();
+}
+
+/** Toggle a value in one of the array-based radar filters */
+function toggleRadarArrayFilter(key, value, isActive) {
+  if (isActive) {
+    if (!radarFilters[key].includes(value)) radarFilters[key].push(value);
+  } else {
+    radarFilters[key] = radarFilters[key].filter(v => v !== value);
+  }
+}
+
+/** Place or move the "You are here" marker */
+function placeUserMarker(lat, lng) {
+  const icon = L.divIcon({
+    className: '',
+    html: `<div style="position:relative;width:20px;height:20px;">
+             <div style="position:absolute;inset:0;background:#FF6B00;border-radius:50%;border:3px solid white;box-shadow:0 0 20px rgba(255,107,0,0.7);z-index:2;"></div>
+             <div style="position:absolute;inset:-8px;background:rgba(255,107,0,0.18);border-radius:50%;animation:locPulse 2s ease-out infinite;z-index:1;"></div>
+           </div>`,
+    iconAnchor: [10, 10]
+  });
+  if (userLocationMarker) map.removeLayer(userLocationMarker);
+  userLocationMarker = L.marker([lat, lng], { icon, zIndexOffset: 1000 }).addTo(map);
+  userLocationMarker.bindPopup(`<div style="font-family:'Outfit',sans-serif;font-size:13px;color:#fff;"><strong>📍 You are here</strong></div>`);
+}
+
+/** Request the user's geolocation */
+function requestUserLocation() {
+  // Show location prompt banner
+  showLocationPrompt();
+}
+
+/** Show a banner prompting for location access */
+function showLocationPrompt() {
+  // Only show if we haven't already got a location
+  if (userLocation) return;
+
+  const existing = document.getElementById('location-prompt');
+  if (existing) return;
+
+  const panel = document.querySelector('.radar-map-panel');
+  if (!panel) return;
+
+  const prompt = document.createElement('div');
+  prompt.id = 'location-prompt';
+  prompt.className = 'location-prompt';
+  prompt.innerHTML = `
+    <div class="location-prompt-icon">📍</div>
+    <div class="location-prompt-text">
+      <strong>Where are you?</strong>
+      <span>Share your location to see restaurants near you</span>
+    </div>
+    <button class="location-prompt-btn" onclick="geolocateUser()">Use My Location</button>
+    <button class="location-prompt-dismiss" onclick="dismissLocationPrompt()" title="Dismiss">✕</button>
+  `;
+  panel.prepend(prompt);
+}
+
+/** Use browser Geolocation API */
+function geolocateUser() {
+  const prompt = document.getElementById('location-prompt');
+  if (prompt) {
+    prompt.querySelector('.location-prompt-btn').textContent = 'Locating…';
+    prompt.querySelector('.location-prompt-btn').disabled = true;
+  }
+
+  if (!navigator.geolocation) {
+    showToast('Geolocation is not supported by your browser', '⚠️');
+    dismissLocationPrompt();
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      placeUserMarker(userLocation.lat, userLocation.lng);
+      map.setView([userLocation.lat, userLocation.lng], 15, { animate: true });
+
+      // Re-draw radius and markers from new center
+      const slider = document.getElementById('radar-slider');
+      updateRadarRadius(parseFloat(slider?.value || 1.5) * 1000);
+
+      dismissLocationPrompt();
+      showToast('Location found! Map centered on you.', '📍');
+    },
+    (err) => {
+      console.warn('Geolocation error:', err.message);
+      showToast('Could not get your location. Using default.', '⚠️');
+      dismissLocationPrompt();
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+  );
+}
+
+/** Dismiss the location prompt */
+function dismissLocationPrompt() {
+  const prompt = document.getElementById('location-prompt');
+  if (prompt) {
+    prompt.classList.add('dismissed');
+    setTimeout(() => prompt.remove(), 300);
+  }
 }
 
 async function updateRadarRadius(meters) {
-  const center = TOMAS_MORATO_CENTER;
+  // Use user's real location if available, else default center
+  const center = userLocation || TOMAS_MORATO_CENTER;
   const count = document.getElementById('radar-count');
   if (count) count.textContent = 'Searching...';
 
@@ -251,7 +379,9 @@ async function updateRadarRadius(meters) {
   try {
     const nearby = await API.getNearbyRestaurants(center.lat, center.lng, meters, {
       openNow: radarFilters.openNow,
-      cuisine: radarFilters.cuisine
+      cuisine: radarFilters.cuisine,
+      ambiance: radarFilters.ambiance,
+      dietary: radarFilters.dietary
     });
 
     // Remove old markers
@@ -435,6 +565,13 @@ async function openRestaurantModal(id) {
     const emoji = CUISINE_EMOJI[r.cuisine] || '🍴';
     const dist = formatDistance(computeDistance(TOMAS_MORATO_CENTER.lat, TOMAS_MORATO_CENTER.lng, r.lat, r.lng));
 
+    const token = sessionStorage.getItem(CONFIG.AUTH_TOKEN_KEY);
+    const role = sessionStorage.getItem('tm_user_role');
+    const claimedRestaurantId = parseInt(sessionStorage.getItem('tm_claimed_restaurant_id') || '0');
+    const canEdit = token && (role === 'admin' || (role === 'owner' && claimedRestaurantId === r.id));
+    const disabledAttr = canEdit ? '' : 'style="pointer-events: none; cursor: default; opacity: 0.6;"';
+    const isOwnerOrAdmin = token && (role === 'owner' || role === 'admin');
+
     // Build modal HTML
     modal.querySelector('.modal-content').innerHTML = `
       <button class="modal-close" onclick="closeModal()">✕</button>
@@ -458,9 +595,9 @@ async function openRestaurantModal(id) {
         <div class="wait-time-widget">
           <div class="widget-title">⏱ Real-Time Wait — Report Current Crowd</div>
           <div class="wait-options">
-            <button class="wait-opt-btn ${r.waitTime === 'none' ? 'selected-none' : ''}" onclick="reportWaitTime(${r.id}, 'none', this.parentNode)">✓ No Wait</button>
-            <button class="wait-opt-btn ${r.waitTime === '15-30' ? 'selected-mid' : ''}" onclick="reportWaitTime(${r.id}, '15-30', this.parentNode)">⏱ 15–30 min</button>
-            <button class="wait-opt-btn ${r.waitTime === 'packed' ? 'selected-packed' : ''}" onclick="reportWaitTime(${r.id}, 'packed', this.parentNode)">⚠ Packed!</button>
+            <button class="wait-opt-btn ${r.waitTime === 'none' ? 'selected-none' : ''}" ${disabledAttr} onclick="reportWaitTime(${r.id}, 'none', this.parentNode)">✓ No Wait</button>
+            <button class="wait-opt-btn ${r.waitTime === '15-30' ? 'selected-mid' : ''}" ${disabledAttr} onclick="reportWaitTime(${r.id}, '15-30', this.parentNode)">⏱ 15–30 min</button>
+            <button class="wait-opt-btn ${r.waitTime === 'packed' ? 'selected-packed' : ''}" ${disabledAttr} onclick="reportWaitTime(${r.id}, 'packed', this.parentNode)">⚠ Packed!</button>
           </div>
         </div>
 
@@ -498,9 +635,7 @@ async function openRestaurantModal(id) {
         <!-- Tabs -->
         <div class="modal-tabs">
           <div class="modal-tab active" onclick="switchModalTab(0, this)">🍽️ Menu</div>
-          <div class="modal-tab" onclick="switchModalTab(1, this)">📷 Photos</div>
-          <div class="modal-tab" onclick="switchModalTab(2, this)">🎟️ Get in Line</div>
-          <div class="modal-tab" onclick="switchModalTab(3, this)">ℹ️ Info</div>
+          <div class="modal-tab" onclick="switchModalTab(1, this)">ℹ️ Info</div>
         </div>
 
         <!-- Tab: Menu -->
@@ -510,41 +645,6 @@ async function openRestaurantModal(id) {
           </div>
           <div class="menu-items-list" id="menu-items-${r.id}">
             ${renderMenuItems(r.menu[0].items)}
-          </div>
-        </div>
-
-        <!-- Tab: Photos -->
-        <div class="tab-panel" id="tab-photos">
-          <div class="menu-categories">
-            <button class="menu-cat-btn active" onclick="switchPhotoTab('food', this, ${r.id})">🍴 Food</button>
-            <button class="menu-cat-btn" onclick="switchPhotoTab('drinks', this, ${r.id})">🍹 Drinks</button>
-            <button class="menu-cat-btn" onclick="switchPhotoTab('ambiance', this, ${r.id})">✨ Ambiance</button>
-          </div>
-          <div class="photo-gallery" id="photo-gallery-${r.id}">
-            ${renderPhotoGallery(r.photos.food)}
-          </div>
-        </div>
-
-        <!-- Tab: Queue -->
-        <div class="tab-panel" id="tab-queue">
-          <div class="queue-section">
-            <h3>Digital Queue</h3>
-            <div class="queue-status">Skip the wait! Join the virtual queue at ${r.name} and we'll notify you when your table is ready.</div>
-            <div id="queue-display-${r.id}" style="max-width:320px; margin: 0 auto; display:flex; flex-direction:column; gap:12px;">
-              <div class="form-group" style="text-align:left;">
-                <label class="form-label">Your Name</label>
-                <input type="text" class="form-input" id="join-queue-name" placeholder="Enter your name..." />
-              </div>
-              <div class="form-group" style="text-align:left;">
-                <label class="form-label">Party Size</label>
-                <input type="number" class="form-input" id="join-queue-size" value="2" min="1" max="20" />
-              </div>
-              <button class="btn-queue" style="margin-top:10px;" onclick="submitJoinQueue(${r.id})">🎟️ Get in Line</button>
-            </div>
-            <div style="margin-top:28px;padding-top:20px;border-top:1px solid var(--border-glass);font-size:13px;color:var(--gray-300);">
-              <div>Current queue size: <strong style="color:var(--orange)" id="queue-waiting-count">${queueStatus.waitingCount} tables waiting</strong></div>
-              <div style="margin-top:6px;">Current wait status: <strong style="color:var(--orange)">${queueStatus.currentWaitLabel}</strong></div>
-            </div>
           </div>
         </div>
 
@@ -572,13 +672,15 @@ async function openRestaurantModal(id) {
             </div>
 
             <!-- Claim Banner -->
+            ${isOwnerOrAdmin ? '' : `
             <div style="margin-top: 24px; padding: 20px; background: rgba(255, 107, 0, 0.06); border: 1px dashed var(--border-orange); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap:16px;">
               <div style="text-align: left; flex:1; min-width:200px;">
                 <strong style="color: var(--white); display: block; margin-bottom: 4px; font-size:15px;">🏪 Are you the owner of this restaurant?</strong>
-                <span style="font-size: 13px; color: var(--gray-300); line-height: 1.4;">Claim this listing to update hours, push custom specials, and manage your digital waitlist live!</span>
+                <span style="font-size: 13px; color: var(--gray-300); line-height: 1.4;">Claim this listing to update hours, push custom specials, and manage your daily specials live!</span>
               </div>
               <button class="btn-primary" style="padding: 10px 24px; font-size: 13px; font-weight:600;" onclick="claimListing(${r.id})">🏪 Claim Listing</button>
             </div>
+            `}
           </div>
         </div>
       </div>
@@ -640,6 +742,19 @@ async function switchPhotoTab(type, el, restaurantId) {
 }
 
 async function reportWaitTime(id, waitTime, container) {
+  const token = sessionStorage.getItem(CONFIG.AUTH_TOKEN_KEY);
+  const role = sessionStorage.getItem('tm_user_role');
+  const claimedRestaurantId = parseInt(sessionStorage.getItem('tm_claimed_restaurant_id') || '0');
+
+  if (!token) {
+    showToast('Please sign in to update wait times!', '🔒');
+    return;
+  }
+  if (role !== 'admin' && (role !== 'owner' || claimedRestaurantId !== id)) {
+    showToast('You can only update the wait time for your own restaurant!', '🔒');
+    return;
+  }
+
   try {
     await API.reportWaitTime(id, waitTime);
     container.querySelectorAll('.wait-opt-btn').forEach(b => {
@@ -651,6 +766,18 @@ async function reportWaitTime(id, waitTime, container) {
     const label = WAIT_LABELS[waitTime].label;
     showToast(`Wait time updated: ${label}`, WAIT_LABELS[waitTime].icon);
     
+    // Update dashboard wait time selection if active
+    if (currentOwnerRestaurant && currentOwnerRestaurant.id === id) {
+      currentOwnerRestaurant.waitTime = waitTime;
+      const dashOptions = document.getElementById('dash-wait-options');
+      if (dashOptions && dashOptions !== container) {
+        dashOptions.querySelectorAll('.wait-opt-btn').forEach(b => {
+          b.classList.remove('selected-none', 'selected-mid', 'selected-packed');
+        });
+        dashOptions.querySelectorAll('.wait-opt-btn')[idx].classList.add(cls);
+      }
+    }
+
     // Refresh lists
     if (document.getElementById('restaurant-list').classList.contains('active')) {
       renderRestaurantList();
@@ -719,14 +846,18 @@ async function initFoodWheel() {
     chip.addEventListener('click', async () => {
       const filter = chip.dataset.filter;
       const value = chip.dataset.value;
-      
+      const wasActive = chip.classList.contains('active');
+
+      // Remove active from all chips in the same group first
       chip.closest('.wheel-chips').querySelectorAll('.wheel-chip').forEach(c => c.classList.remove('active'));
-      chip.classList.toggle('active');
-      
-      if (chip.classList.contains('active')) {
+
+      if (!wasActive) {
+        // Was not active — activate it and apply filter
+        chip.classList.add('active');
         if (filter === 'price') wheelFilters.priceRange = parseInt(value);
         if (filter === 'ambiance') wheelFilters.ambiance = value;
       } else {
+        // Was already active — deactivate and clear filter
         if (filter === 'price') wheelFilters.priceRange = null;
         if (filter === 'ambiance') wheelFilters.ambiance = null;
       }
@@ -820,10 +951,21 @@ function spinWheel() {
   const centerBtn = document.getElementById('wheel-spin-btn');
   if (centerBtn) { centerBtn.classList.add('spinning'); centerBtn.textContent = '...'; }
 
-  const extraSpins = 5 + Math.random() * 5;
+  // extraSpins MUST be an integer so that extraSpins*360 is an exact multiple
+  // of 360. If it were a float, (float*360 + angleDiff) % 360 ≠ angleDiff,
+  // causing a random rotational offset that misaligns the result.
+  const extraSpins = Math.floor(5 + Math.random() * 5); // integer: 5–9
   const targetSlice = Math.floor(Math.random() * restaurants.length);
   const sliceAngle = 360 / restaurants.length;
-  const targetAngle = wheelAngle + (extraSpins * 360) + (360 - (targetSlice * sliceAngle));
+
+  // Desired final wheel angle so targetSlice's centre sits exactly at 12 o'clock:
+  //   centre_screen = (targetSlice * sliceAngle - 90 + sliceAngle/2 + finalAngle) % 360
+  //   we want that = 270  →  finalAngle = (360 - targetSlice*sliceAngle - sliceAngle/2 + 720) % 360
+  const targetFinalAngle = ((360 - targetSlice * sliceAngle - sliceAngle / 2) % 360 + 360) % 360;
+  const currentAngle = ((wheelAngle % 360) + 360) % 360;
+  let angleDiff = (targetFinalAngle - currentAngle + 360) % 360;
+  if (angleDiff === 0) angleDiff = 360; // ensure at least one full extra rotation
+  const targetAngle = wheelAngle + extraSpins * 360 + angleDiff;
   const duration = 4000;
   const start = performance.now();
   const startAngle = wheelAngle;
@@ -869,6 +1011,9 @@ let swipeLiked = 0, swipeSkipped = 0;
 let swipeList = [];
 let roomCode = null;
 let isDragging = false, startX = 0, currentX = 0;
+let likedRestaurants = [];
+let matchedRestaurantIds = [];
+let currentMatchRestaurantId = null;
 
 async function initFoodSwipe() {
   if (swipeInited) return;
@@ -879,6 +1024,8 @@ async function initFoodSwipe() {
     swipeIndex = 0;
     swipeLiked = 0;
     swipeSkipped = 0;
+    likedRestaurants = [];
+    matchedRestaurantIds = [];
     renderSwipeCards();
     updateSwipeScore();
   } catch (e) {
@@ -896,8 +1043,14 @@ function renderSwipeCards() {
       <div style="font-size:60px;">🎉</div>
       <div style="font-family:var(--font-display);font-size:32px;">All Done!</div>
       <div style="color:var(--gray-300);font-size:14px;">You've swiped through all restaurants.</div>
-      <button class="btn-primary" onclick="resetSwipe()" style="margin-top:12px;">🔄 Start Over</button>
+      <div style="display:flex;gap:10px;width:100%;justify-content:center;margin-top:12px;">
+        <button class="btn-primary" onclick="showLikedSummary()" style="padding:10px 20px;font-size:13px;font-weight:600;">📋 View Liked List</button>
+        <button class="btn-secondary" onclick="resetSwipe()" style="padding:10px 20px;font-size:13px;font-weight:600;background:transparent;border:1px solid var(--border-orange);color:var(--orange);">🔄 Start Over</button>
+      </div>
     </div>`;
+    
+    // Automatically display the summary list modal
+    showLikedSummary();
     return;
   }
 
@@ -935,7 +1088,6 @@ function bindSwipeDrag(card) {
     card.style.transition = 'none';
   }
 
-  // We define listeners locally to bind/unbind cleanly
   function onMove(e) {
     if (!isDragging) return;
     currentX = e.clientX || e.touches?.[0]?.clientX || 0;
@@ -959,7 +1111,6 @@ function bindSwipeDrag(card) {
       card.style.transform = `translateX(${dir * 500}px) rotate(${dir * 30}deg)`;
       card.style.opacity = '0';
       
-      // Remove document-level event listeners to avoid leaks
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onEnd);
       window.removeEventListener('touchend', onEnd);
@@ -987,6 +1138,9 @@ function bindSwipeDrag(card) {
 
 async function swipeLike(id) {
   const r = swipeList.find(x => x.id === id);
+  if (r && !likedRestaurants.some(x => x.id === r.id)) {
+    likedRestaurants.push(r);
+  }
   swipeLiked++;
   swipeIndex++;
   updateSwipeScore();
@@ -994,9 +1148,8 @@ async function swipeLike(id) {
   try {
     if (roomCode && r) {
       const res = await API.sendSwipeLike(roomCode, id);
-      if (res.match) {
-        showMatch(r);
-        return;
+      if (res.match && !matchedRestaurantIds.includes(r.id)) {
+        matchedRestaurantIds.push(r.id);
       }
     }
     renderSwipeCards();
@@ -1053,6 +1206,8 @@ async function resetSwipe() {
     const list = await API.getRestaurants();
     swipeList = [...list].sort(() => Math.random() - 0.5);
     swipeIndex = 0; swipeLiked = 0; swipeSkipped = 0;
+    likedRestaurants = [];
+    matchedRestaurantIds = [];
     renderSwipeCards();
     updateSwipeScore();
   } catch (e) {
@@ -1070,8 +1225,8 @@ async function createRoom() {
     document.getElementById('room-status').textContent = `Room ${roomCode} created! Share this code with your group.`;
     document.getElementById('room-members-list').innerHTML = `
       <div class="member-avatar">You</div>
-      <div class="member-avatar" style="background:var(--gray-700);color:var(--gray-300);">+</div>
     `;
+    updateRoomUI();
     showToast(`Room ${roomCode} created! Share with friends.`, '🚀');
   } catch (e) {
     showToast(e.message, '❌');
@@ -1092,13 +1247,97 @@ async function joinRoom() {
     document.getElementById('room-members-list').innerHTML = room.members.map(m => `
       <div class="member-avatar">${m === 'You' ? 'You' : 'P2'}</div>
     `).join('');
+    updateRoomUI();
     showToast(`Joined room ${roomCode}!`, '🎉');
   } catch (e) {
     showToast(e.message, '❌');
   }
 }
 
+function deleteRoom() {
+  if (!roomCode) return;
+  const oldCode = roomCode;
+  roomCode = null;
+  document.getElementById('room-code-display').textContent = 'None';
+  
+  const status = document.getElementById('room-status');
+  if (status) {
+    status.classList.remove('show');
+    status.textContent = '';
+  }
+  
+  const membersList = document.getElementById('room-members-list');
+  if (membersList) {
+    membersList.innerHTML = '';
+  }
+  
+  const input = document.getElementById('room-join-input');
+  if (input) input.value = '';
+  
+  updateRoomUI();
+  showToast(`Room ${oldCode} deleted.`, '🗑️');
+}
+
+function updateRoomUI() {
+  const btnDelete = document.getElementById('btn-delete-room');
+  if (btnDelete) {
+    btnDelete.style.display = roomCode ? 'inline-flex' : 'none';
+  }
+}
+
+function showLikedSummary() {
+  const modal = document.getElementById('swipe-liked-modal');
+  const container = document.getElementById('swipe-liked-list');
+  if (!modal || !container) return;
+
+  if (likedRestaurants.length === 0) {
+    container.innerHTML = `
+      <div style="padding:40px 20px;color:var(--gray-500);text-align:center;">
+        <div style="font-size:48px;margin-bottom:12px;">🍽️</div>
+        <p>No restaurants liked during this session.<br>Swipe right on some places first!</p>
+      </div>
+    `;
+  } else {
+    container.innerHTML = likedRestaurants.map(r => {
+      const emoji = CUISINE_EMOJI[r.cuisine] || '🍴';
+      const isMatched = matchedRestaurantIds.includes(r.id);
+      const matchBadge = isMatched ? `<span style="background:rgba(255,107,0,0.15);border:1px solid var(--border-orange);color:var(--orange);font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600;margin-left:8px;white-space:nowrap;display:inline-block;line-height:1.2;">🔥 Group Match</span>` : '';
+      
+      return `
+        <div class="liked-restaurant-item" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:rgba(255,255,255,0.03);border:1px solid var(--border-glass);border-radius:var(--radius-lg);gap:12px;transition:var(--transition);text-align:left;margin-bottom:8px;">
+          <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;">
+            <div style="font-size:20px;width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg, ${r.imgColor}, #0F0C0A);flex-shrink:0;">${emoji}</div>
+            <div style="min-width:0;flex:1;">
+              <div style="font-size:15px;font-weight:700;color:var(--white);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;">
+                <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px;">${r.name}</span>
+                ${matchBadge}
+              </div>
+              <div style="font-size:12px;color:var(--gray-300);">${r.cuisine} • ${priceSymbol(r.priceRange)} • ⭐ ${r.rating}</div>
+            </div>
+          </div>
+          <button class="btn-room" onclick="chooseLikedRestaurant(${r.id})" style="padding:8px 14px;font-size:12px;border-radius:var(--radius-pill);white-space:nowrap;margin:0;flex-shrink:0;">Let's Go! →</button>
+        </div>
+      `;
+    }).join('');
+  }
+
+  modal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeSwipeLikedModal() {
+  const modal = document.getElementById('swipe-liked-modal');
+  if (modal) modal.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function chooseLikedRestaurant(id) {
+  closeSwipeLikedModal();
+  openRestaurantModal(id);
+}
+
 function showMatch(restaurant) {
+  currentMatchRestaurantId = restaurant.id;
   const notif = document.getElementById('match-notification');
   const nameEl = document.getElementById('match-name');
   if (notif && nameEl) {
@@ -1114,6 +1353,11 @@ function closeMatch() {
   const notif = document.getElementById('match-notification');
   if (notif) notif.classList.remove('show');
   renderSwipeCards();
+  if (currentMatchRestaurantId) {
+    const id = currentMatchRestaurantId;
+    currentMatchRestaurantId = null;
+    openRestaurantModal(id);
+  }
 }
 
 /* ==================== OWNER DASHBOARD ==================== */
@@ -1135,27 +1379,32 @@ async function initDashboard() {
     // 1. Get Claimed Restaurant Profile
     currentOwnerRestaurant = await API.getOwnerRestaurant();
     
-    // Update dashboard header / claimed banner
-    const banner = document.querySelector('.dash-claim-banner');
-    if (banner && currentOwnerRestaurant) {
-      banner.innerHTML = `
-        <strong>🏪 Managing: ${currentOwnerRestaurant.name}</strong><br>
-        <span style="font-size:12px;color:var(--gray-300);">${currentOwnerRestaurant.address} | Phone: ${currentOwnerRestaurant.phone}</span>
-      `;
+    // Update dashboard header
+    const managingTitle = document.getElementById('dash-managing-title');
+    const managingInfo = document.getElementById('dash-managing-info');
+    if (managingTitle && managingInfo && currentOwnerRestaurant) {
+      managingTitle.textContent = `🏪 Managing: ${currentOwnerRestaurant.name}`;
+      managingInfo.textContent = `${currentOwnerRestaurant.address} | Phone: ${currentOwnerRestaurant.phone}`;
     }
 
     // Populate profile edit form
     populateProfileForm(currentOwnerRestaurant);
 
-    // 2. Fetch and render queue
-    await refreshDashboardQueue();
+    // Render dashboard wait time widget
+    renderDashboardWaitTime(currentOwnerRestaurant);
 
-    // 3. Fetch promos list
+    // 2. Fetch promos list
     await refreshDashboardPromos();
 
-    // 4. Fetch analytics
-    const analytics = await API.getAnalytics();
-    updateDashboardAnalytics(analytics);
+    // 3. Populate Account Settings details
+    const currentUsername = sessionStorage.getItem('tm_username') || 'owner@romulo.com';
+    const currentUsernameEl = document.getElementById('account-current-username');
+    if (currentUsernameEl) currentUsernameEl.textContent = currentUsername;
+
+    const fullUserField = document.getElementById('account-new-username');
+    if (fullUserField) fullUserField.value = currentUsername;
+    const overviewUserField = document.getElementById('overview-new-username');
+    if (overviewUserField) overviewUserField.value = currentUsername;
 
     dashInited = true;
   } catch (err) {
@@ -1168,6 +1417,16 @@ async function initDashboard() {
   }
 }
 
+function renderDashboardWaitTime(r) {
+  const container = document.getElementById('dash-wait-options');
+  if (!container) return;
+  container.innerHTML = `
+    <button class="wait-opt-btn ${r.waitTime === 'none' ? 'selected-none' : ''}" onclick="reportWaitTime(${r.id}, 'none', this.parentNode)">✓ No Wait</button>
+    <button class="wait-opt-btn ${r.waitTime === '15-30' ? 'selected-mid' : ''}" onclick="reportWaitTime(${r.id}, '15-30', this.parentNode)">⏱ 15–30 min</button>
+    <button class="wait-opt-btn ${r.waitTime === 'packed' ? 'selected-packed' : ''}" onclick="reportWaitTime(${r.id}, 'packed', this.parentNode)">⚠ Packed!</button>
+  `;
+}
+
 function switchDashPanel(panelId, el) {
   document.querySelectorAll('.dash-panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.dash-nav-item').forEach(n => n.classList.remove('active'));
@@ -1175,8 +1434,14 @@ function switchDashPanel(panelId, el) {
   if (panel) panel.classList.add('active');
   if (el) el.classList.add('active');
   
-  if (panelId === 'dash-queue') refreshDashboardQueue();
   if (panelId === 'dash-promos') refreshDashboardPromos();
+  if (panelId === 'dash-account') {
+    const currentUsername = sessionStorage.getItem('tm_username') || 'owner@romulo.com';
+    const currentUsernameEl = document.getElementById('account-current-username');
+    if (currentUsernameEl) currentUsernameEl.textContent = currentUsername;
+    const fullUserField = document.getElementById('account-new-username');
+    if (fullUserField) fullUserField.value = currentUsername;
+  }
 }
 
 function populateProfileForm(r) {
@@ -1283,109 +1548,13 @@ async function saveOwnerProfile() {
     showToast('Profile saved successfully!', '✅');
     currentOwnerRestaurant = { ...currentOwnerRestaurant, ...updateData };
     
-    // Update details in navigation sidebar claimed banner
-    const banner = document.querySelector('.dash-claim-banner');
-    if (banner) {
-      banner.innerHTML = `
-        <strong>🏪 Managing: ${name}</strong><br>
-        <span style="font-size:12px;color:var(--gray-300);">${address} | Phone: ${phone}</span>
-      `;
+    // Update dashboard header
+    const managingTitle = document.getElementById('dash-managing-title');
+    const managingInfo = document.getElementById('dash-managing-info');
+    if (managingTitle && managingInfo) {
+      managingTitle.textContent = `🏪 Managing: ${name}`;
+      managingInfo.textContent = `${address} | Phone: ${phone}`;
     }
-  } catch (e) {
-    showToast(e.message, '❌');
-  }
-}
-
-async function refreshDashboardQueue() {
-  const container = document.getElementById('queue-list-container');
-  if (!container) return;
-
-  try {
-    const list = await API.getOwnerQueue();
-    queueList = list;
-    
-    const active = queueList.filter(q => !q.called && !q.seated);
-    
-    // Update overview stats
-    const seatedCount = queueList.filter(q => q.seated).length;
-    const statSeated = document.getElementById('dash-seated-today');
-    if (statSeated) statSeated.textContent = 32 + seatedCount;
-
-    const previewCount = document.getElementById('dash-queue-count');
-    if (previewCount) previewCount.textContent = active.length;
-
-    // Update next guest info in overview preview
-    const overviewPreview = document.querySelector('#dash-overview .btn-publish[onclick*="dash-queue"]')?.parentNode;
-    if (overviewPreview) {
-      const nextGuest = active[0];
-      const nextText = overviewPreview.querySelector('div:nth-of-type(3)');
-      if (nextText) {
-        if (nextGuest) {
-          nextText.innerHTML = `Next: <strong style="color:var(--orange);">#${nextGuest.num} ${nextGuest.name}</strong> (${nextGuest.size} pax)`;
-        } else {
-          nextText.innerHTML = `Next: <span style="color:var(--gray-300);">None (Queue is empty)</span>`;
-        }
-      }
-    }
-
-    if (active.length === 0) {
-      container.innerHTML = `<div class="empty-state"><div class="empty-icon">✓</div><p>Queue is clear! All guests have been seated.</p></div>`;
-      return;
-    }
-
-    container.innerHTML = active.map((q, i) => `
-      <div class="queue-item" id="qitem-${q.num}">
-        <div class="queue-num">#${q.num}</div>
-        <div class="queue-info" style="text-align:left;">
-          <div class="queue-name">${q.name}</div>
-          <div class="queue-time">Waiting since ${q.time}</div>
-        </div>
-        <div class="queue-size">👥 ${q.size}</div>
-        <button class="btn-call" onclick="callGuest(${q.num})">📢 Call</button>
-        <button class="btn-done" onclick="seatGuest(${q.num})">✓ Seated</button>
-      </div>
-    `).join('');
-  } catch (e) {
-    container.innerHTML = `<div style="padding:20px;text-align:center;color:red;">Error: ${e.message}</div>`;
-  }
-}
-
-async function callGuest(num) {
-  try {
-    showToast(`Calling queue #${num}...`, '📢');
-    await API.callGuest(num);
-    const item = document.getElementById(`qitem-${num}`);
-    if (item) item.style.borderColor = '#f59e0b';
-    showToast(`Queue #${num} called successfully!`, '📢');
-  } catch (e) {
-    showToast(e.message, '❌');
-  }
-}
-
-async function seatGuest(num) {
-  try {
-    showToast(`Seating guest #${num}...`, '🎟️');
-    await API.seatGuest(num);
-    showToast(`#${num} seated! Great job! 🎉`, '✅');
-    await refreshDashboardQueue();
-  } catch (e) {
-    showToast(e.message, '❌');
-  }
-}
-
-async function addToQueue() {
-  const nameInput = document.getElementById('queue-name-input');
-  const sizeInput = document.getElementById('queue-size-input');
-  const name = nameInput?.value?.trim();
-  const size = parseInt(sizeInput?.value) || 2;
-  if (!name) { showToast('Please enter a guest name!', '⚠️'); return; }
-
-  try {
-    showToast('Adding to queue...', '🎟️');
-    const res = await API.ownerAddToQueue(name, size);
-    if (nameInput) nameInput.value = '';
-    showToast(`${name} added to queue as #${res.guest.num}!`, '🎟️');
-    await refreshDashboardQueue();
   } catch (e) {
     showToast(e.message, '❌');
   }
@@ -1490,99 +1659,67 @@ async function deletePromo(id) {
   }
 }
 
-function updateDashboardAnalytics(analytics) {
-  // Update overview stats
-  const overview = document.getElementById('dash-overview');
-  if (overview) {
-    const cards = overview.querySelectorAll('.stat-card');
-    if (cards.length >= 4) {
-      cards[0].querySelector('.stat-card-value').textContent = analytics.viewsToday;
-      cards[0].querySelector('.stat-card-change').textContent = analytics.viewsChange;
-      
-      cards[1].querySelector('.stat-card-value').textContent = 32 + queueList.filter(q => q.seated).length;
-      cards[1].querySelector('.stat-card-change').textContent = `${queueList.filter(q => !q.called && !q.seated).length} still waiting`;
-      
-      cards[2].querySelector('.stat-card-value').textContent = analytics.swipeMatches;
-      cards[2].querySelector('.stat-card-change').textContent = analytics.swipeMatchesChange;
-      
-      cards[3].querySelector('.stat-card-value').textContent = analytics.avgRating;
-      cards[3].querySelector('.stat-card-change').textContent = `Based on ${analytics.reviewsCount} reviews`;
-    }
+async function handleUpdateAccount(type) {
+  const isOverview = type === 'overview';
+  const userFieldId = isOverview ? 'overview-new-username' : 'account-new-username';
+  const passFieldId = isOverview ? 'overview-new-password' : 'account-new-password';
+  const confirmFieldId = 'account-confirm-password';
+  const errorEl = document.getElementById('account-update-error');
+
+  if (errorEl) {
+    errorEl.style.display = 'none';
+    errorEl.textContent = '';
   }
 
-  // Update analytics panel menu list
-  const analyticsPanel = document.getElementById('dash-analytics');
-  if (analyticsPanel) {
-    const menuList = analyticsPanel.querySelector('div:nth-of-type(2) > div:first-of-type > div:nth-of-type(2)');
-    if (menuList && analytics.topMenuItems) {
-      const maxViews = Math.max(...analytics.topMenuItems.map(i => i.count)) || 1;
-      menuList.innerHTML = analytics.topMenuItems.map(item => `
-        <div style="display:flex;align-items:center;gap:12px;">
-          <div style="flex:1;font-size:14px;text-align:left;">${item.name}</div>
-          <div style="font-size:13px;color:var(--gray-300);">${item.count} views</div>
-          <div style="width:80px;height:6px;background:var(--gray-700);border-radius:3px;overflow:hidden;">
-            <div style="width:${(item.count / maxViews) * 100}%;height:100%;background:var(--orange);border-radius:3px;"></div>
-          </div>
-        </div>
-      `).join('');
-    }
+  const username = document.getElementById(userFieldId)?.value?.trim();
+  const password = document.getElementById(passFieldId)?.value;
 
-    const discoveryList = analyticsPanel.querySelector('div:nth-of-type(2) > div:nth-of-type(2) > div:nth-of-type(2)');
-    if (discoveryList && analytics.discoverySources) {
-      discoveryList.innerHTML = analytics.discoverySources.map(item => `
-        <div style="display:flex;align-items:center;gap:12px;">
-          <div style="flex:1;font-size:14px;text-align:left;">${item.source}</div>
-          <div style="font-size:13px;color:var(--orange);font-weight:600;">${item.percentage}%</div>
-        </div>
-      `).join('');
-    }
+  if (!username || !password) {
+    showToast('Username and password cannot be empty!', '⚠️');
+    return;
   }
 
-  // Draw Line Chart
-  const canvas = document.getElementById('visits-chart');
-  if (canvas && window.Chart && analytics.visitsChart) {
-    if (canvas._chart) {
-      canvas._chart.data.datasets[0].data = analytics.visitsChart;
-      canvas._chart.update();
-    } else {
-      initDashCharts(analytics.visitsChart);
-    }
-  }
-}
-
-function initDashCharts(chartData = [45, 62, 58, 71, 89, 134, 118]) {
-  const canvas = document.getElementById('visits-chart');
-  if (!canvas || !window.Chart) return;
-
-  if (canvas._chart) canvas._chart.destroy();
-
-  const ctx = canvas.getContext('2d');
-  canvas._chart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-      datasets: [{
-        label: 'Page Views',
-        data: chartData,
-        borderColor: '#FF6B00',
-        backgroundColor: 'rgba(255,107,0,0.1)',
-        tension: 0.4,
-        fill: true,
-        pointBackgroundColor: '#FF6B00',
-        pointRadius: 4
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { labels: { color: '#9B9287', font: { family: 'Outfit' } } }
-      },
-      scales: {
-        x: { ticks: { color: '#9B9287' }, grid: { color: 'rgba(255,255,255,0.05)' } },
-        y: { ticks: { color: '#9B9287' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+  if (!isOverview) {
+    const confirmPass = document.getElementById(confirmFieldId)?.value;
+    if (password !== confirmPass) {
+      if (errorEl) {
+        errorEl.textContent = '❌ Passwords do not match!';
+        errorEl.style.display = 'block';
+      } else {
+        showToast('Passwords do not match!', '❌');
       }
+      return;
     }
-  });
+  }
+
+  try {
+    showToast('Updating account settings...', '🔐');
+    await API.updateOwnerAccount(username, password);
+    showToast('Account updated successfully!', '✅');
+
+    // Update UI elements
+    const currentUsernameEl = document.getElementById('account-current-username');
+    if (currentUsernameEl) currentUsernameEl.textContent = username;
+
+    // Clear password fields
+    if (document.getElementById('overview-new-password')) document.getElementById('overview-new-password').value = '';
+    if (document.getElementById('account-new-password')) document.getElementById('account-new-password').value = '';
+    if (document.getElementById('account-confirm-password')) document.getElementById('account-confirm-password').value = '';
+
+    // Keep fields in sync
+    const fullUserField = document.getElementById('account-new-username');
+    if (fullUserField) fullUserField.value = username;
+    const overviewUserField = document.getElementById('overview-new-username');
+    if (overviewUserField) overviewUserField.value = username;
+
+  } catch (e) {
+    if (errorEl) {
+      errorEl.textContent = `❌ ${e.message}`;
+      errorEl.style.display = 'block';
+    } else {
+      showToast(e.message, '❌');
+    }
+  }
 }
 
 /* ==================== HERO QUICK FILTERS ==================== */

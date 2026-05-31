@@ -92,6 +92,39 @@ const API = (() => {
     localStorage.setItem('tm_mock_promos', JSON.stringify(all));
   };
 
+  // Helper to get owner username from restaurant name
+  const getOwnerUsernameForRestaurant = (restaurant) => {
+    if (restaurant.id === 1) return 'owner@romulo.com';
+    const cleanName = restaurant.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, ''); // removes spaces, punctuation like Café, +, ', &
+    return `owner@${cleanName}.com`;
+  };
+
+  // Mock owner credentials (persisted in localStorage)
+  const getMockCredentials = () => {
+    const stored = localStorage.getItem('tm_mock_credentials');
+    if (stored) return JSON.parse(stored);
+    
+    // Default credentials
+    const creds = {
+      admin: { username: 'admin', password: 'admin123', displayName: 'Admin' }
+    };
+    RESTAURANTS.forEach(r => {
+      const username = getOwnerUsernameForRestaurant(r);
+      creds[`owner_${r.id}`] = {
+        username: username,
+        password: 'owner123',
+        displayName: `${r.name} Owner`,
+        restaurantId: r.id
+      };
+    });
+    return creds;
+  };
+  const saveMockCredentials = (creds) => {
+    localStorage.setItem('tm_mock_credentials', JSON.stringify(creds));
+  };
+
   // Swipe sessions / Room matches in mock mode
   let mockRooms = {}; // { roomCode: { members: [], likes: {} } }
 
@@ -171,6 +204,14 @@ const API = (() => {
             if (dist > radiusMeters) return false;
             if (filters.openNow && !isOpenNow(r.hours)) return false;
             if (filters.cuisine && !r.cuisine.toLowerCase().includes(filters.cuisine.toLowerCase())) return false;
+            // Ambiance filter: restaurant must include ALL selected ambiance tags
+            if (filters.ambiance && filters.ambiance.length > 0) {
+              if (!filters.ambiance.every(a => r.ambiance.includes(a))) return false;
+            }
+            // Dietary filter: restaurant must include ALL selected dietary tags
+            if (filters.dietary && filters.dietary.length > 0) {
+              if (!filters.dietary.every(d => r.dietary.includes(d))) return false;
+            }
             return true;
           })
           .map(r => ({ ...r, _dist: computeDistance(lat, lng, r.lat, r.lng) }))
@@ -348,20 +389,27 @@ const API = (() => {
       } else {
         await delay(600);
 
-        // ── Mock Credentials ──────────────────────────────────
-        const MOCK_USERS = {
-          admin: [
-            { username: 'admin', password: 'admin123', displayName: 'Admin', restaurantId: null }
-          ],
-          owner: [
-            { username: 'owner@romulo.com', password: 'owner123', displayName: 'Romulo Cafe Owner', restaurantId: 1 }
-          ]
-        };
+        // ── Mock Credentials (from localStorage so changes persist) ──
+        const creds = getMockCredentials();
+        let matchedCred = null;
 
-        const candidates = MOCK_USERS[role] || [];
-        const match = candidates.find(u => u.username === username && u.password === password);
+        if (role === 'admin') {
+          if (creds.admin && creds.admin.username === username && creds.admin.password === password) {
+            matchedCred = creds.admin;
+          }
+        } else {
+          // Check owner accounts
+          for (const key in creds) {
+            if (key.startsWith('owner_')) {
+              if (creds[key].username === username && creds[key].password === password) {
+                matchedCred = creds[key];
+                break;
+              }
+            }
+          }
+        }
 
-        if (!match) {
+        if (!matchedCred) {
           if (!username || !password) throw new Error('Please enter both username and password.');
           throw new Error('❌ Incorrect username or password.');
         }
@@ -369,14 +417,15 @@ const API = (() => {
         const fakeToken = `mock_jwt_${btoa(username)}_${Date.now()}`;
         sessionStorage.setItem(CONFIG.AUTH_TOKEN_KEY, fakeToken);
         sessionStorage.setItem('tm_user_role', role);
-        sessionStorage.setItem('tm_user_name', match.displayName);
+        sessionStorage.setItem('tm_user_name', matchedCred.displayName);
+        sessionStorage.setItem('tm_username', username);
 
         // Set claimed restaurant
-        const claimedId = match.restaurantId ?? 1;
+        const claimedId = matchedCred.restaurantId || 1;
         mockClaimedRestaurantId = claimedId;
         sessionStorage.setItem('tm_claimed_restaurant_id', String(claimedId));
 
-        return { success: true, token: fakeToken, role, displayName: match.displayName, restaurantId: claimedId };
+        return { success: true, token: fakeToken, role, displayName: matchedCred.displayName, restaurantId: claimedId };
       }
     },
 
@@ -585,38 +634,33 @@ const API = (() => {
       }
     },
 
-    // 21. Get Analytics
-    getAnalytics: async (period = '7d') => {
+    // 21. Update Owner Account Credentials
+    updateOwnerAccount: async (newUsername, newPassword) => {
       if (CONFIG.API_MODE === 'live') {
-        const res = await fetch(`${CONFIG.API_BASE_URL}/api/${CONFIG.API_VERSION}/owner/analytics?period=${period}`, {
+        const res = await fetch(`${CONFIG.API_BASE_URL}/api/${CONFIG.API_VERSION}/owner/account`, {
+          method: 'PATCH',
           headers: getHeaders(),
+          body: JSON.stringify({ username: newUsername, password: newPassword }),
         });
         return await handleResponse(res);
       } else {
-        await delay(500);
-        return {
-          viewsToday: 248,
-          viewsChange: '↑ 12% vs yesterday',
-          queueSeatedToday: 32,
-          queueSeatedChange: '↑ 8 still waiting',
-          swipeMatches: 17,
-          swipeMatchesChange: '↑ 41% this week',
-          avgRating: 4.7,
-          reviewsCount: 284,
-          visitsChart: [45, 62, 58, 71, 89, 134, 118],
-          topMenuItems: [
-            { name: 'USDA Prime Ribeye', count: 89 },
-            { name: 'Wagyu Striploin', count: 67 },
-            { name: 'Molten Lava Cake', count: 54 },
-            { name: 'Truffle Mushroom Soup', count: 41 },
-          ],
-          discoverySources: [
-            { source: 'Food Radar', percentage: 42 },
-            { source: 'Restaurant List', percentage: 31 },
-            { source: 'Food Swipe', percentage: 18 },
-            { source: 'Food Wheel', percentage: 9 },
-          ]
-        };
+        await delay(400);
+        if (!newUsername || !newPassword) throw new Error('Username and password are required.');
+        const role = sessionStorage.getItem('tm_user_role') || 'owner';
+        const creds = getMockCredentials();
+        if (role === 'admin') {
+          creds.admin = { ...creds.admin, username: newUsername, password: newPassword };
+        } else {
+          const claimedId = parseInt(sessionStorage.getItem('tm_claimed_restaurant_id') || '1');
+          const key = `owner_${claimedId}`;
+          if (creds[key]) {
+            creds[key].username = newUsername;
+            creds[key].password = newPassword;
+          }
+        }
+        saveMockCredentials(creds);
+        sessionStorage.setItem('tm_username', newUsername);
+        return { success: true };
       }
     }
   };

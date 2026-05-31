@@ -25,8 +25,11 @@
   <!-- ==================== NAVIGATION ==================== -->
   <nav id="main-nav">
     <div class="nav-logo" data-page="home" onclick="navigateTo('home')">
-      <span class="logo-top">TOMAS</span>
-      <span class="logo-bottom">MORATO</span>
+      <div class="nav-logo-text">
+        <span class="logo-top">TOMAS</span>
+        <span class="logo-bottom">MORATO</span>
+      </div>
+      <img class="nav-logo-img" src="Assets/logo.png" alt="Tomas Morato Logo" />
     </div>
 
     <svg class="nav-pin" viewBox="0 0 24 24" fill="none" stroke="#FF6B00" stroke-width="2" stroke-linecap="round"
@@ -35,15 +38,23 @@
       <circle cx="12" cy="10" r="3" />
     </svg>
 
-    <div class="nav-links">
-      <div class="nav-link" data-page="food-radar" id="nav-radar">🗺️ Food Radar</div>
-      <div class="nav-link" data-page="restaurant-list" id="nav-list">🍽️ Restaurant List</div>
-      <div class="nav-link" data-page="food-wheel" id="nav-wheel">🎡 Food Wheel</div>
-      <div class="nav-link" data-page="food-swipe" id="nav-swipe">💘 Food Swipe</div>
-    </div>
+    <button class="nav-toggle-btn" id="mobile-nav-toggle" onclick="toggleMobileNav()" aria-label="Toggle navigation">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
 
-    <div class="nav-right">
-      <button class="btn-owner" data-page="dashboard" onclick="navigateTo('dashboard')">🏪 For Owners</button>
+    <div class="nav-menu-wrapper" id="nav-menu-wrapper">
+      <div class="nav-links">
+        <div class="nav-link" data-page="food-radar" id="nav-radar">🗺️ Food Radar</div>
+        <div class="nav-link" data-page="restaurant-list" id="nav-list">🍽️ Restaurant List</div>
+        <div class="nav-link" data-page="food-wheel" id="nav-wheel">🎡 Food Wheel</div>
+        <div class="nav-link" data-page="food-swipe" id="nav-swipe">💘 Food Swipe</div>
+      </div>
+
+      <div class="nav-right">
+        <button class="btn-owner" data-page="dashboard" onclick="navigateTo('dashboard')">🏪 For Owners</button>
+      </div>
     </div>
   </nav>
 
@@ -297,10 +308,12 @@
               style="text-transform:uppercase;" />
             <button class="btn-room" onclick="joinRoom()">Join</button>
           </div>
-          <button class="btn-room-outline" onclick="createRoom()">+ Create New Room</button>
+          <button class="btn-room-outline" onclick="createRoom()">Create New Room</button>
           <div class="room-status" id="room-status"></div>
-          <div style="font-size:12px;color:var(--gray-300);margin-top:10px;">Room: <strong id="room-code-display"
-              style="color:var(--orange);">None</strong></div>
+          <div style="font-size:12px;color:var(--gray-300);margin-top:10px;display:flex;align-items:center;justify-content:space-between;width:100%;">
+            <span>Room: <strong id="room-code-display" style="color:var(--orange);">None</strong></span>
+            <button id="btn-delete-room" onclick="deleteRoom()" style="display:none;background:transparent;border:none;color:#ef4444;cursor:pointer;font-size:12px;font-weight:600;align-items:center;gap:4px;padding:2px 6px;border-radius:4px;transition:var(--transition);" title="Delete Group Room">🗑️ Delete Room</button>
+          </div>
           <div class="room-members" id="room-members-list"></div>
         </div>
 
@@ -376,24 +389,17 @@
     <div class="dashboard-layout">
       <!-- Sidebar Nav -->
       <div class="dashboard-sidebar">
-        <div class="dash-claim-banner">
-          <strong>🏪 Claim Your Restaurant</strong>
-          Manage your profile, push promos, and handle your digital queue — all in one place.
-        </div>
         <div class="dash-nav-item active" onclick="switchDashPanel('dash-overview', this)">
           <span class="dash-nav-icon">📊</span> Overview
         </div>
         <div class="dash-nav-item" onclick="switchDashPanel('dash-promos', this)">
           <span class="dash-nav-icon">🔥</span> Daily Specials
         </div>
-        <div class="dash-nav-item" onclick="switchDashPanel('dash-queue', this)">
-          <span class="dash-nav-icon">🎟️</span> Digital Queue
-        </div>
         <div class="dash-nav-item" onclick="switchDashPanel('dash-profile', this)">
           <span class="dash-nav-icon">✏️</span> Edit Profile
         </div>
-        <div class="dash-nav-item" onclick="switchDashPanel('dash-analytics', this)">
-          <span class="dash-nav-icon">📈</span> Analytics
+        <div class="dash-nav-item" onclick="switchDashPanel('dash-account', this)">
+          <span class="dash-nav-icon">🔐</span> Account Settings
         </div>
         <div class="dash-nav-item" onclick="ownerLogout()"
           style="margin-top: auto; border-top: 1px solid var(--border-glass); padding-top: 15px;">
@@ -403,29 +409,23 @@
 
       <!-- Main Content -->
       <div class="dashboard-main">
+        <!-- Dashboard Managing Header -->
+        <div class="dash-managing-header" style="background:var(--card-glass);border:1px solid var(--border-glass);border-radius:var(--radius-lg);padding:16px 20px;backdrop-filter:blur(10px);margin-bottom:24px;">
+          <strong style="color:var(--orange);font-size:15px;display:block;margin-bottom:4px;" id="dash-managing-title">🏪 Managing: Loading...</strong>
+          <span style="font-size:12px;color:var(--gray-300);" id="dash-managing-info"></span>
+        </div>
 
         <!-- Overview Panel -->
         <div class="dash-panel active" id="dash-overview">
-          <div class="dash-stats-grid">
-            <div class="stat-card">
-              <div class="stat-card-label">Page Views Today</div>
-              <div class="stat-card-value">248</div>
-              <div class="stat-card-change">↑ 12% vs yesterday</div>
+
+
+          <!-- Wait Time Management Card -->
+          <div style="background:var(--card-glass);border:1px solid var(--border-glass);border-radius:var(--radius-xl);padding:24px;backdrop-filter:blur(10px);margin-top:20px;margin-bottom:20px;">
+            <div class="widget-title" style="font-size:12px;text-transform:uppercase;letter-spacing:2px;color:var(--gray-300);margin-bottom:16px;">
+              ⏱ Real-Time Wait — Manage Your Current Crowd
             </div>
-            <div class="stat-card">
-              <div class="stat-card-label">Queue Today</div>
-              <div class="stat-card-value" id="dash-seated-today">32</div>
-              <div class="stat-card-change">↑ 8 still waiting</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-card-label">Swipe Matches</div>
-              <div class="stat-card-value">17</div>
-              <div class="stat-card-change">↑ 41% this week</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-card-label">Avg Rating</div>
-              <div class="stat-card-value" style="color:var(--orange);">4.7</div>
-              <div class="stat-card-change">Based on 284 reviews</div>
+            <div class="wait-options" id="dash-wait-options">
+              <!-- Rendered dynamically by JS -->
             </div>
           </div>
 
@@ -449,21 +449,23 @@
                 Promo →</button>
             </div>
 
-            <!-- Quick Queue Preview -->
+            <!-- Quick Account Edit -->
             <div
               style="background:var(--card-glass);border:1px solid var(--border-glass);border-radius:var(--radius-xl);padding:24px;backdrop-filter:blur(10px);">
               <div
                 style="font-size:12px;text-transform:uppercase;letter-spacing:2px;color:var(--gray-300);margin-bottom:16px;">
-                🎟️ Queue Preview</div>
-              <div style="font-family:var(--font-display);font-size:52px;color:var(--orange);line-height:1;"
-                id="dash-queue-count">4</div>
-              <div style="font-size:14px;color:var(--gray-300);margin-bottom:16px;">Groups currently waiting</div>
-              <div style="font-size:13px;color:var(--white);">Next: <strong style="color:var(--orange);">#12 Santos
-                  Family</strong> (4 pax)</div>
-              <button class="btn-publish"
-                style="margin-top:16px;width:100%;background:transparent;border:1px solid var(--border-orange);color:var(--orange);"
-                onclick="switchDashPanel('dash-queue', document.querySelector('.dash-nav-item:nth-child(4)'))">Manage
-                Queue →</button>
+                🔐 Quick Account Edit</div>
+              <div style="display:flex;flex-direction:column;gap:12px;">
+                <div>
+                  <label class="form-label" style="margin-bottom:5px;">New Username</label>
+                  <input type="text" class="form-input" id="overview-new-username" placeholder="New username or email…" />
+                </div>
+                <div>
+                  <label class="form-label" style="margin-bottom:5px;">New Password</label>
+                  <input type="password" class="form-input" id="overview-new-password" placeholder="New password…" />
+                </div>
+                <button class="btn-publish" style="margin-top:4px;width:100%;" onclick="handleUpdateAccount('overview')">💾 Update Credentials</button>
+              </div>
             </div>
           </div>
         </div>
@@ -528,37 +530,6 @@
                 <span
                   style="padding:4px 12px;background:rgba(255,107,0,0.15);border:1px solid var(--border-orange);border-radius:20px;font-size:12px;color:var(--orange);">SCHEDULED</span>
               </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Queue Manager Panel -->
-        <div class="dash-panel" id="dash-queue">
-          <div class="promo-form-card">
-            <h3>🎟️ Add to Queue</h3>
-            <div class="form-row">
-              <div class="form-group">
-                <label class="form-label">Guest Name</label>
-                <input type="text" class="form-input" id="queue-name-input" placeholder="e.g. Santos Family" />
-              </div>
-              <div class="form-group" style="max-width:140px;">
-                <label class="form-label">Party Size</label>
-                <input type="number" class="form-input" id="queue-size-input" value="2" min="1" max="20" />
-              </div>
-              <div style="display:flex;align-items:flex-end;">
-                <button class="btn-publish" onclick="addToQueue()">+ Add to Queue</button>
-              </div>
-            </div>
-          </div>
-
-          <div
-            style="background:var(--card-glass);border:1px solid var(--border-glass);border-radius:var(--radius-xl);padding:24px;backdrop-filter:blur(10px);">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-              <div style="font-size:16px;font-weight:700;">📋 Current Queue</div>
-              <div style="font-size:13px;color:var(--gray-300);">Auto-updates as guests check in</div>
-            </div>
-            <div class="queue-list" id="queue-list-container">
-              <!-- Populated by JS -->
             </div>
           </div>
         </div>
@@ -640,71 +611,37 @@
           </div>
         </div>
 
-        <!-- Analytics Panel -->
-        <div class="dash-panel" id="dash-analytics">
-          <div
-            style="background:var(--card-glass);border:1px solid var(--border-glass);border-radius:var(--radius-xl);padding:24px;backdrop-filter:blur(10px);margin-bottom:20px;">
-            <div style="font-size:16px;font-weight:700;margin-bottom:20px;">📈 Weekly Page Views</div>
-            <canvas id="visits-chart" height="80"></canvas>
-          </div>
+        <!-- Account Settings Panel -->
+        <div class="dash-panel" id="dash-account">
+          <div class="promo-form-card" style="max-width:520px;margin:0 auto;">
+            <h3>🔐 Account Settings</h3>
+            <p style="font-size:13px;color:var(--gray-300);margin-bottom:20px;line-height:1.7;">Update your login credentials. After saving, use the new credentials next time you log in.</p>
 
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
-            <div
-              style="background:var(--card-glass);border:1px solid var(--border-glass);border-radius:var(--radius-xl);padding:24px;backdrop-filter:blur(10px);">
-              <div style="font-size:16px;font-weight:700;margin-bottom:16px;">🍽️ Top Menu Items</div>
-              <div style="display:flex;flex-direction:column;gap:10px;">
-                <div style="display:flex;align-items:center;gap:12px;">
-                  <div style="flex:1;font-size:14px;">USDA Prime Ribeye</div>
-                  <div style="font-size:13px;color:var(--gray-300);">89 views</div>
-                  <div style="width:80px;height:6px;background:var(--gray-700);border-radius:3px;overflow:hidden;">
-                    <div style="width:89%;height:100%;background:var(--orange);border-radius:3px;"></div>
-                  </div>
-                </div>
-                <div style="display:flex;align-items:center;gap:12px;">
-                  <div style="flex:1;font-size:14px;">Wagyu Striploin</div>
-                  <div style="font-size:13px;color:var(--gray-300);">67 views</div>
-                  <div style="width:80px;height:6px;background:var(--gray-700);border-radius:3px;overflow:hidden;">
-                    <div style="width:67%;height:100%;background:var(--orange);border-radius:3px;"></div>
-                  </div>
-                </div>
-                <div style="display:flex;align-items:center;gap:12px;">
-                  <div style="flex:1;font-size:14px;">Molten Lava Cake</div>
-                  <div style="font-size:13px;color:var(--gray-300);">54 views</div>
-                  <div style="width:80px;height:6px;background:var(--gray-700);border-radius:3px;overflow:hidden;">
-                    <div style="width:54%;height:100%;background:var(--orange);border-radius:3px;"></div>
-                  </div>
-                </div>
-                <div style="display:flex;align-items:center;gap:12px;">
-                  <div style="flex:1;font-size:14px;">Truffle Mushroom Soup</div>
-                  <div style="font-size:13px;color:var(--gray-300);">41 views</div>
-                  <div style="width:80px;height:6px;background:var(--gray-700);border-radius:3px;overflow:hidden;">
-                    <div style="width:41%;height:100%;background:var(--orange);border-radius:3px;"></div>
-                  </div>
-                </div>
+            <div style="background:rgba(255,107,0,0.06);border:1px dashed var(--border-orange);border-radius:var(--radius-lg);padding:14px 18px;margin-bottom:24px;font-size:13px;color:var(--gray-300);">
+              <strong style="color:var(--orange);display:block;margin-bottom:4px;">Current Account</strong>
+              Username: <span id="account-current-username" style="color:var(--white);font-weight:600;">—</span>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="account-new-username">New Username / Email</label>
+                <input type="text" class="form-input" id="account-new-username" placeholder="Enter new username…" autocomplete="username" />
               </div>
             </div>
-            <div
-              style="background:var(--card-glass);border:1px solid var(--border-glass);border-radius:var(--radius-xl);padding:24px;backdrop-filter:blur(10px);">
-              <div style="font-size:16px;font-weight:700;margin-bottom:16px;">🔍 Discovery Source</div>
-              <div style="display:flex;flex-direction:column;gap:10px;">
-                <div style="display:flex;align-items:center;gap:12px;">
-                  <div style="flex:1;font-size:14px;">Food Radar</div>
-                  <div style="font-size:13px;color:var(--orange);font-weight:600;">42%</div>
-                </div>
-                <div style="display:flex;align-items:center;gap:12px;">
-                  <div style="flex:1;font-size:14px;">Restaurant List</div>
-                  <div style="font-size:13px;color:var(--orange);font-weight:600;">31%</div>
-                </div>
-                <div style="display:flex;align-items:center;gap:12px;">
-                  <div style="flex:1;font-size:14px;">Food Swipe</div>
-                  <div style="font-size:13px;color:var(--orange);font-weight:600;">18%</div>
-                </div>
-                <div style="display:flex;align-items:center;gap:12px;">
-                  <div style="flex:1;font-size:14px;">Food Wheel</div>
-                  <div style="font-size:13px;color:var(--orange);font-weight:600;">9%</div>
-                </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="account-new-password">New Password</label>
+                <input type="password" class="form-input" id="account-new-password" placeholder="Enter new password…" autocomplete="new-password" />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="account-confirm-password">Confirm Password</label>
+                <input type="password" class="form-input" id="account-confirm-password" placeholder="Re-enter new password…" autocomplete="new-password" />
               </div>
             </div>
+
+            <div id="account-update-error" style="display:none;color:#ef4444;font-size:13px;margin-bottom:12px;padding:10px 14px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:10px;"></div>
+
+            <button class="btn-publish" onclick="handleUpdateAccount('full')" style="width:100%;margin-top:4px;">🔐 Save New Credentials</button>
           </div>
         </div>
 
@@ -713,10 +650,32 @@
   </section>
 
   <!-- ==================== RESTAURANT DETAIL MODAL ==================== -->
+
+
+
+
+  <!-- ==================== RESTAURANT DETAIL MODAL ==================== -->
   <div class="modal-overlay" id="restaurant-modal" onclick="if(event.target===this)closeModal()">
     <div class="modal-box">
       <div class="modal-content">
         <!-- Populated dynamically by JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== SWIPE LIKED LIST MODAL ==================== -->
+  <div class="modal-overlay" id="swipe-liked-modal" onclick="if(event.target===this)closeSwipeLikedModal()">
+    <div class="modal-box" style="max-width: 500px;">
+      <div class="modal-content" style="padding:0;">
+        <button class="modal-close" onclick="closeSwipeLikedModal()">✕</button>
+        <div style="padding: 30px; text-align: center;">
+          <h2 style="font-family: var(--font-display); font-size: 32px; color: var(--white); margin-bottom: 10px;">🍽️ Your Liked List</h2>
+          <p style="color: var(--gray-300); font-size: 14px; margin-bottom: 24px;">Choose the restaurant that sounds best for you right now!</p>
+          
+          <div id="swipe-liked-list" style="display: flex; flex-direction: column; gap: 12px; max-height: 350px; overflow-y: auto; padding-right: 6px;">
+            <!-- Dynamically populated by JS -->
+          </div>
+        </div>
       </div>
     </div>
   </div>
